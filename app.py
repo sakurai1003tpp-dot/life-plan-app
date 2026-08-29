@@ -118,6 +118,9 @@ gross_income_w = st.sidebar.number_input(
 income_change_rate_w = st.sidebar.slider(
     '妻の年収上昇率 (%/年)', 0.0, 5.0, 1.25, step=0.05
 )
+child_care_reduction_years = st.sidebar.selectbox(
+    '育児短時間勤務の期間（年）', [1, 2, 3, 4, 5, 6, 7, 8], index=4
+)
 
 st.sidebar.header('📈 資産・運用設定')
 current_cash = st.sidebar.number_input(
@@ -146,7 +149,6 @@ regional_house_cost = st.sidebar.number_input(
 # ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
-child_care_reduction_years = 5
 child_care_income_reduction_rate = 0.30
 stock_return_rate = 1.5
 stock_dividend_yield = 2.5
@@ -198,17 +200,16 @@ def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
   elif age <= 41:
-    # 29歳〜41歳の成長期
-    return 532.72 + (age - 29) * ((887.86 - 532.72) / 12)
+    # 29歳〜41歳：42歳時点で1100万円に到達するように上昇
+    return 532.72 + (age - 29) * ((1100.0 - 532.72) / 12)
   else:
-    # 42歳から定年（retirement_age_h）に向けて緩やかに単調増加
-    # 42歳時点のベース（約887.86万円）から、定年時に1400万円に到達する直線的な増加モデル
+    # 42歳から定年（retirement_age_h）に向けて緩やかに単調増加（1100万円 → 1400万円）
     peak_target_income = 1400.0
-    start_income_at_42 = 887.86
+    start_income_at_42 = 1100.0
     years_span = max(1, retirement_age_h - 42)
     current_offset = age - 42
     return start_income_at_42 + current_offset * (
-        (peak_target_income - start_income_at_42) / (retirement_age_h - 42)
+        (peak_target_income - start_income_at_42) / years_span
     )
 
 
