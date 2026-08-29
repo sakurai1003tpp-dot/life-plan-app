@@ -47,8 +47,19 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title('📊 プレミアム・ライフプランシミュレーション')
-st.markdown('資産形成・キャッシュフロー・教育費の最適化をリアルタイムで可視化します。')
+st.markdown(
+    """
+    <div style="margin-bottom: 20px;">
+        <h1 style="font-size: 1.4rem; font-weight: 500; color: #1E293B; letter-spacing: -0.025em; margin-bottom: 4px;">
+            📊 ライフプランシミュレーション
+        </h1>
+        <p style="font-size: 0.85rem; color: #64748B; font-weight: 400;">
+            資産形成・キャッシュフロー・教育費の最適化分析
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 st.markdown('---')
 
 # ------------------------------------------
