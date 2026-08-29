@@ -94,15 +94,15 @@ regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万
 # ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
-child_care_reduction_years = 5       
+child_care_reduction_years = 5        
 child_care_income_reduction_rate = 0.30  
 stock_return_rate = 1.5      
 stock_dividend_yield = 2.5  
-min_cash_reserve = 500       
+min_cash_reserve = 500        
 max_cash_limit = 1000        
 investment_stop_age_h = 60  
 retirement_payout_h = 2000  
-retirement_payout_w = 500    
+retirement_payout_w = 500     
 migration_housing_expenses = 50 
 housing_expenses_base = 180      
 annual_travel_cost = 30         
@@ -196,7 +196,7 @@ net_income_history, total_expense_history, annual_balance_history = [], [], []
 child1_history, child2_history, child3_history, total_child_expense_history = [], [], [], []
 cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
 husband_gross_history, wife_gross_history, pension_gross_history, household_gross_history = [], [], [], []
-husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], []
+husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], [], []
 
 init_cash_val = current_cash
 init_inv_val = current_investment
@@ -340,7 +340,7 @@ with col1:
 with col2:
     st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">資産プーク時（年齢: {age_history[total_wealth_history.index(peak_wealth)]}歳）</div>
+            <div class="metric-title">資産ピーク時（年齢: {age_history[total_wealth_history.index(peak_wealth)]}歳）</div>
             <div class="metric-value">{peak_wealth:,.0f} 万円</div>
         </div>
     """, unsafe_allow_html=True)
