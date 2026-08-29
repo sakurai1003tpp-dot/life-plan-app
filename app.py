@@ -232,11 +232,11 @@ def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
   elif age <= 42:
-    # 29歳でスタートし、42歳時点でぴったり1100万円になるように設定
-    return 532.72 + (age - 29) * ((1100.0 - 532.72) / 13)
+    # 29歳から42歳まで、42歳時点で1,200万円となるよう滑らかに増加
+    return 532.72 + (age - 29) * ((1200.0 - 532.72) / 13)
   else:
     peak_target_income = 1400.0
-    start_income_at_42 = 1100.0
+    start_income_at_42 = 1200.0
     years_span = max(1, retirement_age_h - 42)
     current_offset = age - 42
     return start_income_at_42 + current_offset * (
