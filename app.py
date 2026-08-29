@@ -82,6 +82,7 @@ st.markdown(
     <div style="margin-bottom: 20px;">
         <h1 style="font-size: 1.4rem; font-weight: 600; color: #2B2D42; letter-spacing: -0.025em; margin-bottom: 4px;">
             🌸 ほっこりライフプランシミュレーション
+            ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
             将来の資産形成・キャッシュフロー・教育費をやさしく可視化します
@@ -653,6 +654,7 @@ with tab1:
   ax1.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax1.set_title(
       "1. 生涯資産シミュレーション",
+      "生涯資産シミュレーション",
       fontsize=13,
       fontweight="bold",
       color=COLOR_DARK,
@@ -707,6 +709,7 @@ with tab1:
   ax2.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax2.set_title(
       "2. 年間収入・支出・収支",
+      "年間収入・支出・収支",
       fontsize=13,
       fontweight="bold",
       color=COLOR_DARK,
@@ -767,6 +770,7 @@ with tab2:
   ax_g.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax_g.set_title(
       "3. 額面収入の推移",
+      "額面収入の推移",
       fontsize=13,
       fontweight="bold",
       color=COLOR_DARK,
@@ -813,6 +817,7 @@ with tab2:
   ax_n.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax_n.set_title(
       "4. 手取り収入の推移",
+      "手取り収入の推移",
       fontsize=13,
       fontweight="bold",
       color=COLOR_DARK,
