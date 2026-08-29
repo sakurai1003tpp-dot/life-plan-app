@@ -122,7 +122,7 @@ child_care_reduction_years = st.sidebar.selectbox(
     '育児短時間勤務の期間（年）', [1, 2, 3, 4, 5, 6, 7, 8], index=4
 )
 
-st.sidebar.header('📈 資産・運用設定')
+st.sidebar.header('📈 資産・運用・経済設定')
 current_cash = st.sidebar.number_input(
     '現在の現預金 (万円)', 0, 50000, 1000, step=50
 )
@@ -133,7 +133,13 @@ current_stock = st.sidebar.number_input(
     '現在の株式 (万円)', 0, 50000, 300, step=50
 )
 annual_return_rate = st.sidebar.slider(
-    '投資信託の想定利回り (%)', 0.0, 10.0, 4.0, step=0.1
+    '投資信託の想定利回り (%)', 0.0, 15.0, 4.0, step=0.1
+)
+expense_change_rate = st.sidebar.slider(
+    'インフレ率（年間生活費の上昇率 %）', 0.0, 5.0, 1.5, step=0.1
+)
+max_cash_limit = st.sidebar.number_input(
+    '現預金の保有上限 (万円)', 100, 5000, 1000, step=50
 )
 
 st.sidebar.header('🏠 住宅・生活費設定')
@@ -153,7 +159,6 @@ child_care_income_reduction_rate = 0.30
 stock_return_rate = 1.5
 stock_dividend_yield = 2.5
 min_cash_reserve = 500
-max_cash_limit = 1000
 investment_stop_age_h = 60
 retirement_payout_h = 2000
 retirement_payout_w = 500
@@ -162,7 +167,6 @@ housing_expenses_base = 180
 annual_travel_cost = 30
 general_medical_cost = 5
 annual_social_cost = 20
-expense_change_rate = 1.5
 housing_increase_on_child = 60
 wedding_cost = 200
 migration_living_expense_ratio = 0.80
@@ -200,10 +204,8 @@ def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
   elif age <= 41:
-    # 29歳〜41歳：42歳時点で1100万円に到達するように上昇
     return 532.72 + (age - 29) * ((1100.0 - 532.72) / 12)
   else:
-    # 42歳から定年（retirement_age_h）に向けて緩やかに単調増加（1100万円 → 1400万円）
     peak_target_income = 1400.0
     start_income_at_42 = 1100.0
     years_span = max(1, retirement_age_h - 42)
@@ -255,7 +257,6 @@ def calculate_net_income(gross):
     return gross * 0.70
 
 
-# 公的データに基づく年齢別・進路別の年間教育費設定（単位：万円）
 def get_child_yearly_expense(c_age, course_type):
   if not (0 <= c_age <= 22):
     return 0
@@ -280,7 +281,6 @@ def get_child_yearly_expense(c_age, course_type):
       return 120
 
 
-# 子どもの年齢に応じた追加の生活費（食費・日用品費等）を算出する関数
 def get_child_living_expense_addition(c_age):
   if not (0 <= c_age <= 22):
     return 0
@@ -295,7 +295,7 @@ def get_child_living_expense_addition(c_age):
 
 
 # ------------------------------------------
-# シミュレーション実行（入力値の独立・安全化）
+# シミュレーション実行
 # ------------------------------------------
 age_history, total_wealth_history, cash_history = [], [], []
 investment_history, stock_history = [], []
@@ -316,7 +316,6 @@ init_cash_val = current_cash
 init_inv_val = current_investment
 init_stk_val = current_stock
 
-# シミュレーション専用変数に退避
 sim_cash = current_cash
 sim_investment = current_investment
 sim_stock = current_stock
@@ -579,7 +578,7 @@ with tab1:
   ax1.plot(
       age_history,
       cash_history,
-      label='現預金（上限1000万円で固定）',
+      label=f'現預金（上限{max_cash_limit}万円で固定）',
       color='#2E7D32',
       linestyle='--',
       linewidth=1.8,
