@@ -55,7 +55,7 @@ st.markdown(
     """
     <div style="margin-bottom: 20px;">
         <h1 style="font-size: 1.4rem; font-weight: 600; color: #2B2D42; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ライフプランシミュレーション
+            🌸 ほっこりライフプランシミュレーション
         </h1>
         <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
             将来の資産形成・キャッシュフロー・教育費をやさしく可視化します
@@ -118,9 +118,6 @@ if child_count >= 3:
   child_courses[3] = c3_choice
 
 st.sidebar.header("💰 収入・働き方設定")
-gross_income_h_start = st.sidebar.number_input(
-    "夫の現在年収 (万円)", 0, 5000, 720, step=10
-)
 gross_income_w = st.sidebar.number_input(
     "妻の現在年収 (万円)", 0, 5000, 400, step=10
 )
@@ -220,8 +217,9 @@ reduced_income_years_w = sorted(list(set(reduced_income_years_w)))
 def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
-  elif age <= 41:
-    return 532.72 + (age - 29) * ((1100.0 - 532.72) / 12)
+  elif age <= 42:
+    # 29歳でスタートし、42歳時点でぴったり1100万円になるように設定
+    return 532.72 + (age - 29) * ((1100.0 - 532.72) / 13)
   else:
     peak_target_income = 1400.0
     start_income_at_42 = 1100.0
@@ -573,7 +571,7 @@ with col4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------
-# タブによる情報の整理（軸・凡例を英語化）
+# タブによる情報の整理
 # ------------------------------------------
 tab1, tab2, tab3, tab4 = st.tabs(
     ["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ"]
