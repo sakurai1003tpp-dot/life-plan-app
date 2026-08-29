@@ -91,6 +91,15 @@ retirement_age_w = st.sidebar.slider("妻の退職年齢（歳）", 50, 75, 55)
 pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
 pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
+st.sidebar.header("🏦 年金設定")
+st.sidebar.caption("「ねんきん定期便」または公的年金シミュレーターの65歳時点の見込額を入力してください。")
+pension_at_65_h = st.sidebar.number_input(
+    "夫の65歳時点の年金見込額（年額・額面・万円）", 0, 1000, 260, step=5
+)
+pension_at_65_w = st.sidebar.number_input(
+    "妻の65歳時点の年金見込額（年額・額面・万円）", 0, 1000, 165, step=5
+)
+
 st.sidebar.header("👶 子ども・育休設定")
 child_count = st.sidebar.selectbox("子供の人数", [0, 1, 2, 3], index=1)
 first_birth_age_h = st.sidebar.slider("第1子誕生時の夫の年齢", 22, 50, 31)
@@ -265,19 +274,21 @@ def calculate_husband_gross_income(age):
     return base
 
 
-def estimate_pension_h():
-  return (81.3 + (100 * 0.005481 * 12 * (65 - 22))) * 0.87
+def adjust_pension_for_start_age(pension_at_65, start_age):
+  """受給開始年齢に応じて年金額を調整する（現在の制度水準）。"""
+  if start_age >= 65:
+    # 繰下げ受給：1か月あたり0.7%増額
+    return pension_at_65 * (1 + (start_age - 65) * 12 * 0.007)
+  # 繰上げ受給：1か月あたり0.4%減額
+  return pension_at_65 * (1 - (65 - start_age) * 12 * 0.004)
 
 
-def estimate_pension_w():
-  actual_leave_years = len(maternity_leave_years_w)
-  work_years_w = max(0, (retirement_age_w - 22) - actual_leave_years)
-  base_pension = 81.3 + ((gross_income_w / 12) * 0.005481 * 12 * work_years_w)
-  return base_pension * 1.42 * 0.87
-
-
-calculated_pension_h = estimate_pension_h()
-calculated_pension_w = estimate_pension_w()
+calculated_pension_h = adjust_pension_for_start_age(
+    pension_at_65_h, pension_start_age_h
+)
+calculated_pension_w = adjust_pension_for_start_age(
+    pension_at_65_w, pension_start_age_w
+)
 
 
 def calculate_net_income(gross):
