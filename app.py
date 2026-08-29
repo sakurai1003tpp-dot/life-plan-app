@@ -196,7 +196,7 @@ net_income_history, total_expense_history, annual_balance_history = [], [], []
 child1_history, child2_history, child3_history, total_child_expense_history = [], [], [], []
 cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
 husband_gross_history, wife_gross_history, pension_gross_history, household_gross_history = [], [], [], []
-husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], [], []
+husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], []
 
 init_cash_val = current_cash
 init_inv_val = current_investment
@@ -327,7 +327,24 @@ for i in range(100 - current_age_h + 1):
 # ------------------------------------------
 initial_total_wealth = init_cash_val + init_inv_val + init_stk_val
 peak_wealth = max(total_wealth_history)
-final_wealth = total_wealth_history[-1]
+
+# 80歳時点の残高を取得（リスト内に80歳が存在しない場合は最後の値、または近似値）
+target_age_80 = current_age_h + (80 - current_age_h)
+if target_age_80 in age_history:
+    idx_80 = age_history.index(target_age_80)
+    wealth_at_80 = total_wealth_history[idx_80]
+else:
+    wealth_at_80 = total_wealth_history[-1]
+
+# 子どもの人数と進路状況のテキスト作成
+if child_count == 0:
+    child_info_str = "子供 0人"
+else:
+    courses_summary = []
+    for n in range(1, child_count + 1):
+        if n in child_courses:
+            courses_summary.append(f"第{n}: {course_labels[child_courses[n]]}")
+    child_info_str = f"子供 {child_count}人 (" + ", ".join(courses_summary) + ")"
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -347,24 +364,24 @@ with col2:
 with col3:
     st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">100歳時点の残高</div>
-            <div class="metric-value">{final_wealth:,.0f} 万円</div>
+            <div class="metric-title">80歳時点の残高</div>
+            <div class="metric-value">{wealth_at_80:,.0f} 万円</div>
         </div>
     """, unsafe_allow_html=True)
 with col4:
     st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">夫の退職時年齢</div>
-            <div class="metric-value">{retirement_age_h} 歳</div>
+            <div class="metric-title">家族・進路設定</div>
+            <div class="metric-value" style="font-size: 1.1rem; padding-top: 5px;">{child_info_str}</div>
         </div>
     """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------
-# タブによる情報の整理
+# タブによる情報の整理（子育てとポートフォリオを分割）
 # ------------------------------------------
-tab1, tab2, tab3 = st.tabs(["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て・ポートフォリオ"])
+tab1, tab2, tab3, tab4 = st.tabs(["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ"])
 
 with tab1:
     fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
@@ -425,7 +442,7 @@ with tab2:
     st.pyplot(fig_income)
 
 with tab3:
-    fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    fig_child, ax3 = plt.subplots(figsize=(10, 6))
     if child_count >= 1:
         ax3.plot(age_history, child1_history, label=f'第1子 ({course_labels[child_courses[1]]})', color='#3498DB', linewidth=2)
     if child_count >= 2:
@@ -436,24 +453,29 @@ with tab3:
     ax3.plot(age_history, total_child_expense_history, label='総子ども費用', color='#E74C3C', linewidth=2.5, linestyle=':')
     ax3.axvline(retirement_age_h, color='red', linestyle=':')
     ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-    ax3.set_title('5. 子ども費用の推移', fontsize=12, fontweight='bold')
+    ax3.set_title('子育て費用の推移', fontsize=12, fontweight='bold')
+    ax3.set_xlabel('夫の年齢 (歳)', fontsize=10)
     ax3.set_ylabel('金額 (万円)', fontsize=10)
     ax3.grid(True, linestyle='--', alpha=0.5)
     ax3.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig_child)
 
+with tab4:
+    fig_port, ax4 = plt.subplots(figsize=(10, 6))
     ax4.stackplot(age_history, cash_ratio_history, investment_ratio_history, stock_ratio_history, 
                   labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'], 
                   colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'])
     ax4.axvline(retirement_age_h, color='red', linestyle=':')
     ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-    ax4.set_title('6. 資産構成比率の推移', fontsize=12, fontweight='bold')
+    ax4.set_title('資産構成比率の推移', fontsize=12, fontweight='bold')
     ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
     ax4.set_ylabel('比率 (%)', fontsize=10)
     ax4.set_ylim(0, 100)
     ax4.grid(True, linestyle='--', alpha=0.5)
     ax4.legend(loc='upper left')
     plt.tight_layout()
-    st.pyplot(fig2)
+    st.pyplot(fig_port)
 
 # CSVエクスポート機能の追加
 st.markdown("---")
