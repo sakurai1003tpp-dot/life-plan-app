@@ -1,90 +1,80 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
-# アプリのタイトルを表示
-st.title("ライフプラン・シミュレーション")
-
-import matplotlib.pyplot as plt
-
-# グラフを高解像度（鮮明）に設定
-plt.rcParams['figure.dpi'] = 150
-plt.rcParams['savefig.dpi'] = 300
-
 try:
     import japanize_matplotlib
 except ImportError:
     pass
 
-# --- 基本設定 ---
+# グラフを高解像度（鮮明）に設定
+plt.rcParams['figure.dpi'] = 150
+plt.rcParams['savefig.dpi'] = 300
 
-# 【家族の年齢・働き方設定】
-current_age_h = 29          # 夫の現在の年齢（歳）
-current_age_w = 30          # 妻の現在の年齢（歳）
-retirement_age_h = 65       # 夫の退職（リタイア）年齢（歳）
-retirement_age_w = 55       # 妻の退職（リタイア）年齢（歳）
-pension_start_age_h = 65    # 夫の年金受給開始年齢（歳）
-pension_start_age_w = 70    # 妻の年金受給開始年齢（歳）※70歳繰り下げ受給
+# スマホでも見やすいように画面全体を使う設定
+st.set_page_config(page_title="ライフプラン・シミュレーション", layout="wide")
+st.title("📊 ライフプラン・シミュレーション")
 
-# 【収入の設定】
-gross_income_h_start = 720  # 夫の現在の額面年収（万円）※残業代込み
-gross_income_w = 400        # 妻の額面年収（万円）
-income_change_rate_w = 1.25 # 妻の年収上昇率（年率・％）
+# ------------------------------------------
+# サイドバーに設定パネルを作成（ここで変更した数値が計算に反映されます）
+# ------------------------------------------
+st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
+current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
+current_age_w = st.sidebar.slider("妻の現在の年齢（歳）", 20, 60, 30)
+retirement_age_h = st.sidebar.slider("夫の退職年齢（歳）", 50, 75, 65)
+retirement_age_w = st.sidebar.slider("妻の退職年齢（歳）", 50, 75, 55)
+pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
+pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
-# 【残業の設定（42歳未満は月45時間相当、42歳以降は支給なし）】
+st.sidebar.header("💰 収入・働き方設定")
+gross_income_h_start = st.sidebar.number_input("夫の現在年収 (万円)", 0, 5000, 720, step=10)
+gross_income_w = st.sidebar.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
+income_change_rate_w = st.sidebar.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
+
+st.sidebar.header("📈 資産・運用設定")
+current_cash = st.sidebar.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
+current_investment = st.sidebar.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
+current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 300, step=50)
+annual_return_rate = st.sidebar.slider("投資信託の想定利回り (%)", 0.0, 10.0, 4.0, step=0.1)
+
+st.sidebar.header("🏠 住宅・生活費設定")
+living_expenses = st.sidebar.number_input("基本生活費 (年間・万円)", 0, 2000, 400, step=10)
+regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
+
+# ------------------------------------------
+# スライダー以外の基本設定（固定値）
+# ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
-
-# 【妻の出産・育児に伴う収入減の設定】
-child_care_reduction_years = 5     # 育休復職後、時短勤務等で年収が抑制される期間（年/人）
-child_care_income_reduction_rate = 0.30  # 育休復職後の年収カット率
-
-# 【現在の資産と運用設定（※投資信託のリターンを4.0%に変更）】
-current_cash = 1000         # 現在の現預金残高（万円）
-current_investment = 1300   # 現在の投資信託・運用資産残高（万円）
-current_stock = 300         # 現在の株式（個別株等）の資産残高（万円）
-annual_return_rate = 4.0    # 投資信託の想定運用利回り（年率・％ ※4.0%）
-stock_return_rate = 1.5     # 株式の想定株価上昇率（キャピタルゲイン・年率・％）
-stock_dividend_yield = 2.5  # 株式の年間配当利回り（インカムゲイン・％）
-min_cash_reserve = 500      # 生活防衛資金の下限（万円）
-max_cash_limit = 1000       # 現預金の上限（万円）
-investment_stop_age_h = 60  # 60歳まで投資購入を継続、60歳で停止
-
-# 【退職金の設定】
-retirement_payout_h = 2000  # 夫の退職金支給額（万円）※65歳時
-retirement_payout_w = 500   # 妻の退職金支給額（万円）※55歳時
-
-# 【定年時の地方移住・住宅購入の設定】
-regional_house_cost = 5000      # 夫65歳時の地方住宅購入費用（万円・現金決済）
-migration_housing_expenses = 50 # 移住後の年間住居費（固定資産税・メンテナンス等・万円）
-
-# 【現在の生活費・住居費・イベント費の設定】
-living_expenses = 400           # 現在の基本生活費（年間・万円）
-housing_expenses_base = 180     # 現在の住居費（年間・万円）
-annual_travel_cost = 30         # 毎年計上する旅行費用（年間・万円）
-general_medical_cost = 5        # 一般的な医療費（年間・万円）
-annual_social_cost = 20         # 毎年計上する交際費（年間・万円）
-expense_change_rate = 1.5       # 現役時代の生活費インフレ率（年率・％）
-housing_increase_on_child = 60  # 子ども誕生後に増える住居費（年間・万円）
-
-# 【臨時イベント費用の設定】
-wedding_cost = 200              # 来年の結婚式費用（万円）
-
-# 【リタイア（移住）後の生活費設定】
+child_care_reduction_years = 5     
+child_care_income_reduction_rate = 0.30  
+stock_return_rate = 1.5     
+stock_dividend_yield = 2.5  
+min_cash_reserve = 500      
+max_cash_limit = 1000       
+investment_stop_age_h = 60  
+retirement_payout_h = 2000  
+retirement_payout_w = 500   
+migration_housing_expenses = 50 
+housing_expenses_base = 180     
+annual_travel_cost = 30         
+general_medical_cost = 5        
+annual_social_cost = 20         
+expense_change_rate = 1.5       
+housing_increase_on_child = 60  
+wedding_cost = 200              
 migration_living_expense_ratio = 0.80  
 migration_medical_cost_multiplier = 4.0 
 
-# 自動車関連費
 car_maintenance_cost = 40      
 car_purchase_price = 300       
 car_replacement_cycle = 10     
 annual_car_depreciation = car_purchase_price / car_replacement_cycle
 total_annual_car_cost = car_maintenance_cost + annual_car_depreciation
 
-# 【子育て・教育費の設定】
-child_count = 1               
-first_birth_age_h = 31        
-birth_interval = 3            
-maternity_leave_per_child = 3 
+child_count = 1                
+first_birth_age_h = 31         
+birth_interval = 3             
+maternity_leave_per_child = 3  
 
 child_courses = {
     1: 'PUBLIC_UNIV_RIKEI',         
@@ -120,7 +110,7 @@ for b_w in birth_ages_w:
         reduced_income_years_w.append(start_y + y)
 reduced_income_years_w = sorted(list(set(reduced_income_years_w)))
 
-# --- 収入・年金計算関数（滑らかな昇給カーブ設計） ---
+# --- 収入・年金計算関数 ---
 def calculate_husband_base_gross_income(age):
     if age < 29 or age >= retirement_age_h: return 0
     elif age <= 41: 
@@ -194,12 +184,12 @@ stock_ratio_history = []
 
 husband_gross_history = []
 wife_gross_history = []
-pension_gross_history = []    # 【修正追加】年金(額面)リスト
+pension_gross_history = []    
 household_gross_history = []
 
 husband_net_history = []
 wife_net_history = []
-pension_net_history = []      # 【修正追加】年金(手取り)リスト
+pension_net_history = []      
 household_net_history = []
 
 # --- シミュレーション・ループ ---
@@ -239,7 +229,6 @@ for i in range(100 - current_age_h + 1):
     if age_h == retirement_age_h:
         extra_retirement_cash += retirement_payout_h
 
-    # 【修正】年金（額面・手取り）の計算を分離してリストへ保存できるように変更
     current_pension_gross = 0
     if age_h >= pension_start_age_h:
         current_pension_gross += calculated_pension_h
@@ -308,11 +297,10 @@ for i in range(100 - current_age_h + 1):
     cash_delta = pure_annual_balance + extra_retirement_cash
     current_cash += cash_delta
     
-    # 【安全対策＆売却順序の厳密化：定年移住時の住宅購入】
     if age_h == retirement_age_h:
         total_available_liquidity = current_cash + current_stock + current_investment
         if total_available_liquidity < regional_house_cost + min_cash_reserve:
-            print(f"【警告】夫 {age_h}歳時点：地方住宅購入（{regional_house_cost}万円）と生活防衛資金確保のためにお金が不足しています（資金ショート・破綻リスク）！")
+            st.error(f"【警告】夫 {age_h}歳時点：地方住宅購入（{regional_house_cost}万円）と生活防衛資金確保のためにお金が不足しています（資金ショート・破綻リスク）！")
         
         sale_from_stock = current_stock
         current_stock = 0
@@ -326,7 +314,6 @@ for i in range(100 - current_age_h + 1):
             
         current_cash -= regional_house_cost
 
-    # 【通常時の資金不足時：株式を優先して売却するロジック】
     effective_max_cash = max_cash_limit
     if current_cash < min_cash_reserve:
         shortfall = min_cash_reserve - current_cash 
@@ -377,30 +364,29 @@ for i in range(100 - current_age_h + 1):
     husband_gross_history.append(current_gross_h)
     wife_gross_history.append(current_gross_w)
     
-    # 【修正追加】年金(額面)と世帯合計を履歴に追加
     pension_gross_history.append(current_pension_gross)
     household_gross_history.append(total_gross)
 
     husband_net_history.append(net_h)
     wife_net_history.append(net_w)
     
-    # 【修正追加】年金(手取り)と世帯合計を履歴に追加
     pension_net_history.append(current_pension_net)
     household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
 # ウィンドウ1：資産と収支の2段グラフ
 # ------------------------------------------
-fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+# スマホ表示を意識して縦の長さを変更 (figsize)
+fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
 
 ax1.plot(age_history, total_wealth_history, label='総資産額', color='#0F4C81', linewidth=2.5)
 ax1.plot(age_history, cash_history, label='現預金（上限1000万円で固定）', color='#2E7D32', linestyle='--', linewidth=1.8)
-ax1.plot(age_history, investment_history, label='投資信託 (利回り4.0%)', color='#E67E22', linestyle='--', linewidth=1.8)
+ax1.plot(age_history, investment_history, label=f'投資信託 (利回り{annual_return_rate}%)', color='#E67E22', linestyle='--', linewidth=1.8)
 ax1.plot(age_history, stock_history, label='株式 [株価1.5% + 配当2.0%・先に売却]', color='#8E44AD', linestyle='--', linewidth=1.8)
 
-ax1.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫定年・移住 (65歳)')
+ax1.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫定年・移住')
 ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15, label='リタイア期')
-ax1.set_title('1. 資産残高の生涯シミュレーション（投信4%・株式優先売却対応版）', fontsize=12, fontweight='bold')
+ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
 ax1.set_ylabel('金額 (万円)', fontsize=10)
 ax1.grid(True, linestyle='--', alpha=0.5)
 ax1.legend(loc='upper left', frameon=True)
@@ -413,7 +399,7 @@ ax2.fill_between(age_history, annual_balance_history, 0, where=[b >= 0 for b in 
 ax2.fill_between(age_history, annual_balance_history, 0, where=[b < 0 for b in annual_balance_history], color='#E74C3C', alpha=0.3, interpolate=True, label='赤字期間')
 
 ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
-ax2.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫定年・移住 (65歳)')
+ax2.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫定年・移住')
 ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
 ax2.set_title('2. 年間手取り収入・年間支出・年間収支の推移', fontsize=12, fontweight='bold')
 ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
@@ -425,18 +411,18 @@ plt.tight_layout()
 # ------------------------------------------
 # ウィンドウ2：年収の推移（額面・手取りに年金を追加）のグラフ
 # ------------------------------------------
-fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
 
 ax_g.plot(age_history, household_gross_history, label='世帯合計 額面収入（給与＋年金）', color='#2C3E50', linewidth=2.5)
 ax_g.plot(age_history, husband_gross_history, label='夫 額面給与収入', color='#2980B9', linestyle='--', linewidth=1.8)
 ax_g.plot(age_history, wife_gross_history, label='妻 額面給与収入', color='#E67E22', linestyle='--', linewidth=1.8)
 ax_g.plot(age_history, pension_gross_history, label='公立年金受給額（額面合計）', color='#8E44AD', linestyle=':', linewidth=2.0)
 
-ax_g.axvline(42, color='orange', linestyle=':', linewidth=1.5, label='夫 残業停止 (42歳)')
-ax_g.axvline(55 + (current_age_h - current_age_w), color='purple', linestyle=':', linewidth=1.5, label='妻 定年 (55歳)')
-ax_g.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫 定年 (65歳)')
+ax_g.axvline(42, color='orange', linestyle=':', linewidth=1.5, label='夫 残業停止')
+ax_g.axvline(retirement_age_w + (current_age_h - current_age_w), color='purple', linestyle=':', linewidth=1.5, label='妻 定年')
+ax_g.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫 定年')
 ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_g.set_title('3. 額面収入の生涯推移（夫・妻・年金・世帯合計）', fontsize=12, fontweight='bold')
+ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
 ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
 ax_g.grid(True, linestyle='--', alpha=0.5)
 ax_g.legend(loc='upper right', frameon=True)
@@ -446,11 +432,11 @@ ax_n.plot(age_history, husband_net_history, label='夫 手取り給与', color='
 ax_n.plot(age_history, wife_net_history, label='妻 手取り給与', color='#F39C12', linestyle='--', linewidth=1.8)
 ax_n.plot(age_history, pension_net_history, label='公的年金（手取り換算）', color='#9B59B6', linestyle=':', linewidth=2.0)
 
-ax_n.axvline(42, color='orange', linestyle=':', linewidth=1.5, label='夫 残業停止 (42歳)')
-ax_n.axvline(55 + (current_age_h - current_age_w), color='purple', linestyle=':', linewidth=1.5, label='妻 定年 (55歳)')
-ax_n.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫 定年 (65歳)')
+ax_n.axvline(42, color='orange', linestyle=':', linewidth=1.5, label='夫 残業停止')
+ax_n.axvline(retirement_age_w + (current_age_h - current_age_w), color='purple', linestyle=':', linewidth=1.5, label='妻 定年')
+ax_n.axvline(retirement_age_h, color='red', linestyle=':', linewidth=1.5, label='夫 定年')
 ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_n.set_title('4. 手取り収入の生涯推移（夫・妻・年金・世帯合計）', fontsize=12, fontweight='bold')
+ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
 ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
 ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
 ax_n.grid(True, linestyle='--', alpha=0.5)
@@ -460,7 +446,7 @@ plt.tight_layout()
 # ------------------------------------------
 # ウィンドウ3：子ども費と資産構成の2段グラフ
 # ------------------------------------------
-fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
 
 ax3.plot(age_history, child1_history, label=f'第1子 ({course_labels[child_courses[1]]})', color='#3498DB', linewidth=2)
 if child_count >= 2:
@@ -489,8 +475,10 @@ ax4.grid(True, linestyle='--', alpha=0.5)
 ax4.legend(loc='upper left', frameon=True)
 plt.tight_layout()
 
-plt.show()
 
+# ==========================================
+# 画面にグラフを表示 (Streamlit専用の処理)
+# ==========================================
 st.pyplot(fig1)
 st.pyplot(fig_income)
 st.pyplot(fig2)
