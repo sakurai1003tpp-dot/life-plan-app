@@ -206,7 +206,7 @@ next_year_one_time_expense = st.sidebar.number_input(
 )
 st.sidebar.header("📐 グラフ表示設定")
 chart_scale = st.sidebar.slider(
-    "グラフの表示倍率", 0.5, 1.0, 0.7, step=0.1,
+    "グラフの表示倍率", 0.5, 1.0, 1.0, step=0.1,
     help="グラフの大きさを調整できます。",
 )
 
