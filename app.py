@@ -92,12 +92,19 @@ pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）
 pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
 st.sidebar.header("🏦 年金設定")
-st.sidebar.caption("「ねんきん定期便」または公的年金シミュレーターの65歳時点の見込額を入力してください。")
+st.sidebar.caption("「ねんきん定期便」または公的年金シミュレーターの65歳時点の見込額（現在価値）を入力してください。")
 pension_at_65_h = st.sidebar.number_input(
     "夫の65歳時点の年金見込額（年額・額面・万円）", 0, 1000, 260, step=5
 )
 pension_at_65_w = st.sidebar.number_input(
     "妻の65歳時点の年金見込額（年額・額面・万円）", 0, 1000, 165, step=5
+)
+pension_indexation_rate = st.sidebar.slider(
+    "年金額の年間改定率（%）", 0.0, 3.0, 1.0, step=0.1
+)
+pension_net_rate = st.sidebar.slider(
+    "年金の手取り率（%）", 70, 100, 100, step=1,
+    help="初期値100%は、額面と手取りを同額として扱う設定です。",
 )
 
 st.sidebar.header("👶 子ども・育休設定")
@@ -192,6 +199,18 @@ annual_social_cost = st.sidebar.number_input(
 regional_house_cost = st.sidebar.number_input(
     "定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100
 )
+house_purchase_incidental_rate = st.sidebar.slider(
+    "住宅購入の諸費用率（%）", 0.0, 15.0, 7.0, step=0.5
+)
+annual_home_maintenance_cost = st.sidebar.number_input(
+    "老後の住宅維持費・固定資産税（年額・万円）", 0, 300, 50, step=5
+)
+annual_retirement_insurance_cost = st.sidebar.number_input(
+    "老後の健康保険・介護保険等（年額・万円）", 0, 300, 60, step=5
+)
+next_year_one_time_expense = st.sidebar.number_input(
+    "翌年の臨時支出（万円）", 0, 2000, 200, step=10
+)
 
 living_expenses = living_expenses_monthly * 12
 housing_expenses_base = housing_expenses_monthly * 12
@@ -210,7 +229,6 @@ retirement_payout_h = 2000
 retirement_payout_w = 500
 migration_housing_expenses = 50
 housing_increase_on_child = 60
-wedding_cost = 200
 migration_living_expense_ratio = 0.80
 migration_medical_cost_multiplier = 4.0
 
@@ -366,10 +384,12 @@ init_stk_val = current_stock
 sim_cash = current_cash
 sim_investment = current_investment
 sim_stock = current_stock
+asset_depletion_age = None
 
 for i in range(100 - current_age_h + 1):
   age_h = current_age_h + i
   age_w = current_age_w + i
+  inflation_factor = (1 + expense_change_rate / 100) ** i
 
   annual_dividend = 0
   if i > 0:
@@ -400,10 +420,15 @@ for i in range(100 - current_age_h + 1):
       retirement_payout_w if age_w == retirement_age_w else 0
   ) + (retirement_payout_h if age_h == retirement_age_h else 0)
   current_pension_gross = (
-      calculated_pension_h if age_h >= pension_start_age_h else 0
-  ) + (calculated_pension_w if age_w >= pension_start_age_w else 0)
-  # 年金は額面と手取りを同額として扱う
-  current_pension_net = current_pension_gross
+      calculated_pension_h * ((1 + pension_indexation_rate / 100) ** i)
+      if age_h >= pension_start_age_h
+      else 0
+  ) + (
+      calculated_pension_w * ((1 + pension_indexation_rate / 100) ** i)
+      if age_w >= pension_start_age_w
+      else 0
+  )
+  current_pension_net = current_pension_gross * (pension_net_rate / 100)
 
   total_gross = (
       calculate_husband_gross_income(age_h)
@@ -412,10 +437,9 @@ for i in range(100 - current_age_h + 1):
   )
   pure_annual_income = net_h + net_w + current_pension_net + annual_dividend
 
-  is_migrated = age_h >= retirement_age_h and age_w >= retirement_age_h
+  is_migrated = age_h >= retirement_age_h and age_w >= retirement_age_w
 
   if not is_migrated:
-    rate_factor_exp = (1 + expense_change_rate / 100) ** i
     current_housing = housing_expenses_base + (
         housing_increase_on_child
         if (child_count > 0 and age_h >= first_birth_age_h)
@@ -440,21 +464,23 @@ for i in range(100 - current_age_h + 1):
         + annual_travel_cost
         + general_medical_cost
         + annual_social_cost
-    ) * rate_factor_exp
+    ) * inflation_factor
   else:
-    retirement_start_i = retirement_age_h - current_age_h
     base_expense_fixed = (
         (living_expenses * migration_living_expense_ratio)
         + migration_housing_expenses
         + total_annual_car_cost
         + annual_travel_cost
         + annual_social_cost
-    ) * ((1 + expense_change_rate / 100) ** retirement_start_i)
-    annual_expense = (base_expense_fixed * (0.90 if age_h >= 75 else 1.0)) + (
-        general_medical_cost * migration_medical_cost_multiplier
     )
+    annual_expense = (
+        base_expense_fixed * (0.90 if age_h >= 75 else 1.0)
+        + general_medical_cost * migration_medical_cost_multiplier
+        + annual_home_maintenance_cost
+        + annual_retirement_insurance_cost
+    ) * inflation_factor
 
-  extra_one_time_expense = wedding_cost if i == 1 else 0
+  extra_one_time_expense = next_year_one_time_expense if i == 1 else 0
 
   c1_exp, c2_exp, c3_exp = 0, 0, 0
   if child_count >= 1:
@@ -467,7 +493,7 @@ for i in range(100 - current_age_h + 1):
     c3_age = age_h - (first_birth_age_h + birth_interval * 2)
     c3_exp = get_child_yearly_expense(c3_age, child_courses[3])
 
-  total_child_expense = c1_exp + c2_exp + c3_exp
+  total_child_expense = (c1_exp + c2_exp + c3_exp) * inflation_factor
   pure_total_expense = (
       annual_expense + total_child_expense + extra_one_time_expense
   )
@@ -478,12 +504,15 @@ for i in range(100 - current_age_h + 1):
   if age_h == retirement_age_h:
     sim_cash += sim_stock
     sim_stock = 0
-    needed = regional_house_cost - sim_cash
+    inflated_house_purchase_cost = regional_house_cost * (
+        1 + house_purchase_incidental_rate / 100
+    ) * inflation_factor
+    needed = inflated_house_purchase_cost - sim_cash
     if needed > 0:
       sale = min(needed, sim_investment)
       sim_investment -= sale
       sim_cash += sale
-    sim_cash -= regional_house_cost
+    sim_cash -= inflated_house_purchase_cost
 
   if sim_cash < min_cash_reserve:
     shortfall = min_cash_reserve - sim_cash
@@ -506,6 +535,8 @@ for i in range(100 - current_age_h + 1):
     sim_investment += excess
 
   total_wealth = sim_cash + sim_investment + sim_stock
+  if total_wealth < 0 and asset_depletion_age is None:
+    asset_depletion_age = age_h
   c_ratio = (sim_cash / total_wealth) * 100 if total_wealth > 0 else 100
   i_ratio = (sim_investment / total_wealth) * 100 if total_wealth > 0 else 0
   s_ratio = (sim_stock / total_wealth) * 100 if total_wealth > 0 else 0
@@ -598,6 +629,14 @@ with col4:
         """,
       unsafe_allow_html=True,
   )
+
+if asset_depletion_age is not None:
+  st.error(
+      f"⚠️ {asset_depletion_age}歳で総資産がマイナスになる見込みです。"
+      "支出・住宅購入費・運用方針を見直してください。"
+  )
+else:
+  st.success("✅ 100歳まで総資産はマイナスにならない見込みです。")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -942,17 +981,19 @@ with tab4:
 st.markdown("---")
 st.subheader("📥 シミュレーションデータのダウンロード")
 df_export = pd.DataFrame({
-    "Husband_Age": age_history,
-    "Total_Wealth(10k_JPY)": total_wealth_history,
-    "Cash(10k_JPY)": cash_history,
-    "Mutual_Fund(10k_JPY)": investment_history,
-    "Stocks(10k_JPY)": stock_history,
-    "Net_Income(10k_JPY)": net_income_history,
-    "Total_Expense(10k_JPY)": total_expense_history,
-    "Annual_Balance(10k_JPY)": annual_balance_history,
+    "夫の年齢（歳）": age_history,
+    "総資産（万円）": total_wealth_history,
+    "現預金（万円）": cash_history,
+    "投資信託（万円）": investment_history,
+    "株式（万円）": stock_history,
+    "手取り収入（万円）": net_income_history,
+    "年金額面（万円）": pension_gross_history,
+    "総支出（万円）": total_expense_history,
+    "年間収支（万円）": annual_balance_history,
+    "子ども費用合計（万円）": total_child_expense_history,
 })
 
-csv_data = df_export.to_csv(index=False).encode("utf-8")
+csv_data = df_export.to_csv(index=False).encode("utf-8-sig")
 st.download_button(
     label="CSV形式で全データをダウンロード",
     data=csv_data,
