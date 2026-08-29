@@ -198,12 +198,18 @@ def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
   elif age <= 41:
+    # 29歳〜41歳の成長期
     return 532.72 + (age - 29) * ((887.86 - 532.72) / 12)
-  elif age <= 59:
-    return 1000.0 + (age - 42) * ((1400.0 - 1000.0) / 17)
-  elif age <= 64:
-    return 1400.0 * 0.70
-  return 0
+  else:
+    # 42歳から定年（retirement_age_h）に向けて緩やかに単調増加
+    # 42歳時点のベース（約887.86万円）から、定年時に1400万円に到達する直線的な増加モデル
+    peak_target_income = 1400.0
+    start_income_at_42 = 887.86
+    years_span = max(1, retirement_age_h - 42)
+    current_offset = age - 42
+    return start_income_at_42 + current_offset * (
+        (peak_target_income - start_income_at_42) / (retirement_age_h - 42)
+    )
 
 
 def calculate_husband_gross_income(age):
@@ -688,8 +694,7 @@ with tab2:
       linestyle=':',
       linewidth=2.0,
   )
-  ax_g.axvline(42, color='orange', linestyle=':', label='夫 残業停止')
-  ax_g.axvline(retirement_age_h, color='red', linestyle=':')
+  ax_g.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
   ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
   ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
   ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
@@ -727,7 +732,6 @@ with tab2:
       linestyle=':',
       linewidth=2.0,
   )
-  ax_n.axvline(42, color='orange', linestyle=':')
   ax_n.axvline(retirement_age_h, color='red', linestyle=':')
   ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
   ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
