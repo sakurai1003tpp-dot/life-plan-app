@@ -2,16 +2,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-# グラフを高解像度（鮮明）に設定
+# グラフを高解像度・文字化け防止設定
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
 plt.rcParams['font.sans-serif'] = [
-    'IPAexGothic',
+    'Meiryo',
     'Yu Gothic',
+    'IPAexGothic',
     'Takao',
     'MS Gothic',
     'DejaVu Sans',
 ]
+plt.rcParams['axes.unicode_minus'] = False  # マイナス記号の文字化け防止
 
 # 画面設定とカスタムCSS
 st.set_page_config(page_title='ライフプランシミュレーション', layout='wide')
@@ -77,7 +79,6 @@ child_count = st.sidebar.selectbox('子供の人数', [0, 1, 2, 3], index=1)
 first_birth_age_h = st.sidebar.slider('第1子誕生時の夫の年齢', 22, 50, 31)
 birth_interval = st.sidebar.slider('きょうだいの年齢差（年）', 1, 5, 3)
 
-# 育休期間の選択（子ども1人あたり）
 maternity_leave_per_child = st.sidebar.selectbox(
     '子1人あたりの産休・育休期間（年）', [1, 2, 3], index=1
 )
@@ -167,7 +168,6 @@ regional_house_cost = st.sidebar.number_input(
     '定年時 住宅購入費用 (万円)', 0, 20000, 5000, step=100
 )
 
-# 毎月入力を年間ベースに換算
 living_expenses = living_expenses_monthly * 12
 housing_expenses_base = housing_expenses_monthly * 12
 
