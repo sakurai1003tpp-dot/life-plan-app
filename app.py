@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+import japanize_matplotlib
 import pandas as pd
 import streamlit as st
 
 # ------------------------------------------
 # グラフの基本設定（日本語フォントを自動選択）
-# グラフの基本設定（日本語フォントを明示的に読み込む）
+# グラフの基本設定（Streamlit Cloudでも日本語を表示）
 # ------------------------------------------
 available_fonts = {font.name for font in font_manager.fontManager.ttflist}
 japanese_font_candidates = [
@@ -15,13 +16,10 @@ japanese_font = next(
     (font for font in japanese_font_candidates if font in available_fonts),
     "DejaVu Sans",
 )
-# Noto Sans JP を直接登録するため、Matplotlib の環境差による文字化けを防げます。
-JAPANESE_FONT_PATH = r"C:\Windows\Fonts\NotoSansJP-VF.ttf"
-font_manager.fontManager.addfont(JAPANESE_FONT_PATH)
-japanese_font = font_manager.FontProperties(fname=JAPANESE_FONT_PATH).get_name()
 plt.rcParams["font.family"] = japanese_font
 plt.rcParams["font.sans-serif"] = [japanese_font, "DejaVu Sans", "Arial"]
-plt.rcParams["font.sans-serif"] = [japanese_font]
+plt.rcParams["axes.unicode_minus"] = False
+# japanize_matplotlib が同梱のIPAexGothicを設定するため、OSのフォントには依存しません。
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 300
