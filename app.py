@@ -72,10 +72,15 @@ retirement_age_w = st.sidebar.slider('妻の退職年齢（歳）', 50, 75, 55)
 pension_start_age_h = st.sidebar.slider('夫の年金受給開始年齢（歳）', 60, 75, 65)
 pension_start_age_w = st.sidebar.slider('妻の年金受給開始年齢（歳）', 60, 75, 70)
 
-st.sidebar.header('👶 子ども設定')
+st.sidebar.header('👶 子ども・育休設定')
 child_count = st.sidebar.selectbox('子供の人数', [0, 1, 2, 3], index=1)
 first_birth_age_h = st.sidebar.slider('第1子誕生時の夫の年齢', 22, 50, 31)
 birth_interval = st.sidebar.slider('きょうだいの年齢差（年）', 1, 5, 3)
+
+# 育休期間の選択（子ども1人あたり）
+maternity_leave_per_child = st.sidebar.selectbox(
+    '子1人あたりの産休・育休期間（年）', [1, 2, 3], index=1
+)
 
 child_courses = {}
 course_labels = {
@@ -142,12 +147,21 @@ max_cash_limit = st.sidebar.number_input(
     '現預金の保有上限 (万円)', 100, 5000, 1000, step=50
 )
 
-st.sidebar.header('🏠 住宅・生活費設定')
+st.sidebar.header('🏠 住宅・生活費・年間支出設定')
 living_expenses_monthly = st.sidebar.number_input(
     '基本生活費 (毎月・万円)', 0, 100, 33, step=1
 )
 housing_expenses_monthly = st.sidebar.number_input(
     '住居費 (毎月・万円)', 0, 50, 15, step=1
+)
+annual_travel_cost = st.sidebar.number_input(
+    '年間旅行費 (万円)', 0, 200, 30, step=5
+)
+general_medical_cost = st.sidebar.number_input(
+    '年間医療費 (万円)', 0, 50, 5, step=1
+)
+annual_social_cost = st.sidebar.number_input(
+    '年間交際費 (万円)', 0, 100, 20, step=5
 )
 regional_house_cost = st.sidebar.number_input(
     '定年時 住宅購入費用 (万円)', 0, 20000, 5000, step=100
@@ -170,14 +184,10 @@ investment_stop_age_h = 60
 retirement_payout_h = 2000
 retirement_payout_w = 500
 migration_housing_expenses = 50
-annual_travel_cost = 30
-general_medical_cost = 5
-annual_social_cost = 20
 housing_increase_on_child = 60
 wedding_cost = 200
 migration_living_expense_ratio = 0.80
 migration_medical_cost_multiplier = 4.0
-maternity_leave_per_child = 3
 
 car_maintenance_cost = 40
 car_purchase_price = 300
