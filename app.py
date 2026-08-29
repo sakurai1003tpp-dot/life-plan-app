@@ -1,3 +1,4 @@
+import platform
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import pandas as pd
@@ -6,16 +7,11 @@ import streamlit as st
 # ------------------------------------------
 # グラフの日本語対応・基本設定
 # ------------------------------------------
-# Streamlit CloudなどのLinux環境で利用可能な日本語フォントを自動検出して設定
-import platform
 if platform.system() == "Linux":
-    # Linux環境（Streamlit Cloud等）向けのフォント設定
     plt.rcParams["font.family"] = "IPAexGothic"
 elif platform.system() == "Darwin":
-    # Mac向け
     plt.rcParams["font.family"] = "Hiragino Sans"
 else:
-    # Windows向け
     plt.rcParams["font.family"] = "Meiryo"
 
 plt.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
@@ -273,78 +269,4 @@ calculated_pension_w = estimate_pension_w()
 def calculate_net_income(gross):
     if gross <= 0:
         return 0
-    elif gross <= 300:
-        return gross * 0.85
-    elif gross <= 600:
-        return gross * 0.80
-    elif gross <= 1000:
-        return gross * 0.75
-    else:
-        return gross * 0.70
-
-
-def get_child_yearly_expense(c_age, course_type):
-    if not (0 <= c_age <= 22):
-        return 0
-    if c_age <= 2:
-        return 30
-    elif c_age <= 6:
-        return 35
-    elif c_age <= 12:
-        return 34
-    elif c_age <= 15:
-        return 54
-    elif c_age <= 18:
-        return 51
-    else:
-        if course_type == "ALL_PUBLIC":
-            return 120
-        elif course_type == "PUBLIC_UNIV_RIKEI":
-            return 205
-        elif course_type == "PUBLIC_UNIV_BUNKEI":
-            return 172
-        else:
-            return 120
-
-
-def get_child_living_expense_addition(c_age):
-    if not (0 <= c_age <= 22):
-        return 0
-    if c_age <= 3:
-        return 15
-    elif c_age <= 12:
-        return 30
-    elif c_age <= 18:
-        return 55
-    else:
-        return 40
-
-
-# ------------------------------------------
-# シミュレーション実行
-# ------------------------------------------
-age_history, total_wealth_history, cash_history = [], [], []
-investment_history, stock_history = [], []
-net_income_history, total_expense_history, annual_balance_history = [], [], []
-child1_history, child2_history, child3_history, total_child_expense_history = (
-    [],
-    [],
-    [],
-    [],
-)
-cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
-husband_gross_history, wife_gross_history = [], []
-pension_gross_history, household_gross_history = [], []
-husband_net_history, wife_net_history = [], []
-pension_net_history, household_net_history = [], []
-
-init_cash_val = current_cash
-init_inv_val = current_investment
-init_stk_val = current_stock
-
-sim_cash = current_cash
-sim_investment = current_investment
-sim_stock = current_stock
-
-for i in range(100 - current_age_h + 1):
-    age_h = current
+    elif gross
