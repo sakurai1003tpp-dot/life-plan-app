@@ -19,7 +19,7 @@ COLOR_PURPLE = "#9D4EDD"  # ラベンダー
 COLOR_DARK = "#2B2D42"  # チャコールグレー
 
 # 画面設定とカスタムCSS
-st.set_page_config(page_title="ライフプランシミュレーション", layout="wide")
+st.set_page_config(page_title="ライフプラン シミュレーション", layout="wide")
 
 st.markdown(
     """
