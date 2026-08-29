@@ -5,20 +5,8 @@ import streamlit as st
 from pathlib import Path
 
 # ------------------------------------------
-# グラフの基本設定（日本語フォントを自動選択）
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
 # ------------------------------------------
-available_fonts = {font.name for font in font_manager.fontManager.ttflist}
-japanese_font_candidates = [
-    "Yu Gothic", "Yu Gothic UI", "Meiryo", "Noto Sans CJK JP", "IPAexGothic",
-]
-japanese_font = next(
-    (font for font in japanese_font_candidates if font in available_fonts),
-    "DejaVu Sans",
-)
-plt.rcParams["font.family"] = japanese_font
-plt.rcParams["font.sans-serif"] = [japanese_font, "DejaVu Sans", "Arial"]
-plt.rcParams["axes.unicode_minus"] = False
 # app.py と同じフォルダに置いたフォントを使うため、OSやPythonのバージョンに依存しません。
 JAPANESE_FONT_PATH = Path(__file__).with_name("NotoSansJP-VF.ttf")
 if JAPANESE_FONT_PATH.exists():
@@ -81,7 +69,6 @@ st.markdown(
     """
     <div style="margin-bottom: 20px;">
         <h1 style="font-size: 1.4rem; font-weight: 600; color: #2B2D42; letter-spacing: -0.025em; margin-bottom: 4px;">
-            🌸 ほっこりライフプランシミュレーション
             ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
@@ -397,9 +384,6 @@ for i in range(100 - current_age_h + 1):
   current_pension_gross = (
       calculated_pension_h if age_h >= pension_start_age_h else 0
   ) + (calculated_pension_w if age_w >= pension_start_age_w else 0)
-  current_pension_net = (
-      current_pension_gross * 0.85 if current_pension_gross > 0 else 0
-  )
   # 年金は額面と手取りを同額として扱う
   current_pension_net = current_pension_gross
 
@@ -653,7 +637,6 @@ with tab1:
   )
   ax1.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax1.set_title(
-      "1. 生涯資産シミュレーション",
       "生涯資産シミュレーション",
       fontsize=13,
       fontweight="bold",
@@ -708,7 +691,6 @@ with tab1:
   ax2.axvline(retirement_age_h, color="#FF869E", linestyle=":", linewidth=2)
   ax2.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax2.set_title(
-      "2. 年間収入・支出・収支",
       "年間収入・支出・収支",
       fontsize=13,
       fontweight="bold",
@@ -769,7 +751,6 @@ with tab2:
   ax_g.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
   ax_g.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax_g.set_title(
-      "3. 額面収入の推移",
       "額面収入の推移",
       fontsize=13,
       fontweight="bold",
@@ -816,7 +797,6 @@ with tab2:
   ax_n.axvline(retirement_age_h, color="#FF869E", linestyle=":")
   ax_n.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax_n.set_title(
-      "4. 手取り収入の推移",
       "手取り収入の推移",
       fontsize=13,
       fontweight="bold",
