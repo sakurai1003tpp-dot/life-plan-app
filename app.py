@@ -1,39 +1,40 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import matplotlib_fontja  # ←これを入れるだけで日本語化されます
 
 # グラフを高解像度（鮮明）に設定
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
 
 # スマホでも見やすいように画面全体を使う設定
-st.set_page_config(page_title="Life Plan Simulation", layout="wide")
-st.title("📊 Life Plan Simulation")
+st.set_page_config(page_title="ライフプラン・シミュレーション", layout="wide")
+st.title("📊 ライフプラン・シミュレーション")
 
 # ------------------------------------------
 # サイドバーに設定パネルを作成
 # ------------------------------------------
-st.sidebar.header("👨‍👩‍👧‍👦 Family & Work Settings")
-current_age_h = st.sidebar.slider("Husband's Age", 20, 60, 29)
-current_age_w = st.sidebar.slider("Wife's Age", 20, 60, 30)
-retirement_age_h = st.sidebar.slider("Husband's Retirement Age", 50, 75, 65)
-retirement_age_w = st.sidebar.slider("Wife's Retirement Age", 50, 75, 55)
-pension_start_age_h = st.sidebar.slider("Husband's Pension Start Age", 60, 75, 65)
-pension_start_age_w = st.sidebar.slider("Wife's Pension Start Age", 60, 75, 70)
+st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
+current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
+current_age_w = st.sidebar.slider("妻の現在の年齢（歳）", 20, 60, 30)
+retirement_age_h = st.sidebar.slider("夫の退職年齢（歳）", 50, 75, 65)
+retirement_age_w = st.sidebar.slider("妻の退職年齢（歳）", 50, 75, 55)
+pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
+pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
-st.sidebar.header("💰 Income Settings")
-gross_income_h_start = st.sidebar.number_input("Husband's Income (10k JPY)", 0, 5000, 720, step=10)
-gross_income_w = st.sidebar.number_input("Wife's Income (10k JPY)", 0, 5000, 400, step=10)
-income_change_rate_w = st.sidebar.slider("Wife's Income Growth Rate (%/year)", 0.0, 5.0, 1.25, step=0.05)
+st.sidebar.header("💰 収入・働き方設定")
+gross_income_h_start = st.sidebar.number_input("夫の現在年収 (万円)", 0, 5000, 720, step=10)
+gross_income_w = st.sidebar.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
+income_change_rate_w = st.sidebar.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
 
-st.sidebar.header("📈 Asset & Investment Settings")
-current_cash = st.sidebar.number_input("Current Cash (10k JPY)", 0, 50000, 1000, step=50)
-current_investment = st.sidebar.number_input("Current Mutual Funds (10k JPY)", 0, 50000, 1300, step=50)
-current_stock = st.sidebar.number_input("Current Stocks (10k JPY)", 0, 50000, 300, step=50)
-annual_return_rate = st.sidebar.slider("Mutual Funds Return Rate (%)", 0.0, 10.0, 4.0, step=0.1)
+st.sidebar.header("📈 資産・運用設定")
+current_cash = st.sidebar.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
+current_investment = st.sidebar.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
+current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 300, step=50)
+annual_return_rate = st.sidebar.slider("投資信託の想定利回り (%)", 0.0, 10.0, 4.0, step=0.1)
 
-st.sidebar.header("🏠 Housing & Living Expenses")
-living_expenses = st.sidebar.number_input("Base Living Expenses (Annual)", 0, 2000, 400, step=10)
-regional_house_cost = st.sidebar.number_input("Retirement House Cost", 0, 20000, 5000, step=100)
+st.sidebar.header("🏠 住宅・生活費設定")
+living_expenses = st.sidebar.number_input("基本生活費 (年間・万円)", 0, 2000, 400, step=10)
+regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
 
 # ------------------------------------------
 # 基本設定（固定値）
@@ -72,7 +73,7 @@ birth_interval = 3
 maternity_leave_per_child = 3  
 
 child_courses = {1: 'PUBLIC_UNIV_RIKEI', 2: 'PUBLIC_UNIV_PRIVATE', 3: 'ALL_PUBLIC'}
-course_labels = {'PUBLIC_UNIV_RIKEI': 'Science/Public', 'PUBLIC_UNIV_PRIVATE': 'Liberal Arts/Private', 'ALL_PUBLIC': 'All Public'}
+course_labels = {'PUBLIC_UNIV_RIKEI': '国公立・理系', 'PUBLIC_UNIV_PRIVATE': '私立文系・理系', 'ALL_PUBLIC': '全公立'}
 
 # --- 出産・育休期間の計算 ---
 birth_ages_h, birth_ages_w = [], []
@@ -262,82 +263,81 @@ for i in range(100 - current_age_h + 1):
     household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
-# グラフ描画（全英語化）
+# グラフ描画（日本語対応版）
 # ------------------------------------------
 fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax1.plot(age_history, total_wealth_history, label='Total Assets', color='#0F4C81', linewidth=2.5)
-ax1.plot(age_history, cash_history, label='Cash (Cap: 10M)', color='#2E7D32', linestyle='--', linewidth=1.8)
-ax1.plot(age_history, investment_history, label=f'Mutual Funds ({annual_return_rate}%)', color='#E67E22', linestyle='--', linewidth=1.8)
-ax1.plot(age_history, stock_history, label='Stocks', color='#8E44AD', linestyle='--', linewidth=1.8)
-ax1.axvline(retirement_age_h, color='red', linestyle=':', label='Retirement / Migration')
+ax1.plot(age_history, total_wealth_history, label='総資産額', color='#0F4C81', linewidth=2.5)
+ax1.plot(age_history, cash_history, label='現預金（上限1000万円で固定）', color='#2E7D32', linestyle='--', linewidth=1.8)
+ax1.plot(age_history, investment_history, label=f'投資信託 (利回り{annual_return_rate}%)', color='#E67E22', linestyle='--', linewidth=1.8)
+ax1.plot(age_history, stock_history, label='株式', color='#8E44AD', linestyle='--', linewidth=1.8)
+ax1.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
 ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax1.set_title('1. Lifetime Asset Balance Simulation', fontsize=12, fontweight='bold')
-ax1.set_ylabel('Amount (10k JPY)', fontsize=10)
+ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
+ax1.set_ylabel('金額 (万円)', fontsize=10)
 ax1.grid(True, linestyle='--', alpha=0.5)
 ax1.legend(loc='upper left')
 
-ax2.plot(age_history, net_income_history, label='Net Income (incl. Dividends)', color='#2980B9', linewidth=1.8)
-ax2.plot(age_history, total_expense_history, label='Total Expenses', color='#C0392B', linewidth=1.8)
-ax2.plot(age_history, annual_balance_history, label='Annual Balance', color='#333333', linewidth=1.5, linestyle='-.')
+ax2.plot(age_history, net_income_history, label='世帯手取り収入（配当金込）', color='#2980B9', linewidth=1.8)
+ax2.plot(age_history, total_expense_history, label='年間総支出', color='#C0392B', linewidth=1.8)
+ax2.plot(age_history, annual_balance_history, label='年間収支', color='#333333', linewidth=1.5, linestyle='-.')
 ax2.fill_between(age_history, annual_balance_history, 0, where=[b >= 0 for b in annual_balance_history], color='#27AE60', alpha=0.3, interpolate=True)
 ax2.fill_between(age_history, annual_balance_history, 0, where=[b < 0 for b in annual_balance_history], color='#E74C3C', alpha=0.3, interpolate=True)
 ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
 ax2.axvline(retirement_age_h, color='red', linestyle=':')
 ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax2.set_title('2. Annual Income vs Expenses & Balance', fontsize=12, fontweight='bold')
-ax2.set_xlabel("Husband's Age", fontsize=10)
-ax2.set_ylabel('Amount (10k JPY)', fontsize=10)
+ax2.set_title('2. 年間手取り収入・年間支出・年間収支の推移', fontsize=12, fontweight='bold')
+ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
+ax2.set_ylabel('金額 (万円)', fontsize=10)
 ax2.grid(True, linestyle='--', alpha=0.5)
 ax2.legend(loc='upper left')
 plt.tight_layout()
 
 fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax_g.plot(age_history, household_gross_history, label='Household Gross Income', color='#2C3E50', linewidth=2.5)
-ax_g.plot(age_history, husband_gross_history, label="Husband's Gross Salary", color='#2980B9', linestyle='--', linewidth=1.8)
-ax_g.plot(age_history, wife_gross_history, label="Wife's Gross Salary", color='#E67E22', linestyle='--', linewidth=1.8)
-ax_g.plot(age_history, pension_gross_history, label='Gross Pension', color='#8E44AD', linestyle=':', linewidth=2.0)
-ax_g.axvline(42, color='orange', linestyle=':', label='Husband Overtime Stop')
+ax_g.plot(age_history, household_gross_history, label='世帯合計 額面収入（給与＋年金）', color='#2C3E50', linewidth=2.5)
+ax_g.plot(age_history, husband_gross_history, label='夫 額面給与収入', color='#2980B9', linestyle='--', linewidth=1.8)
+ax_g.plot(age_history, wife_gross_history, label='妻 額面給与収入', color='#E67E22', linestyle='--', linewidth=1.8)
+ax_g.plot(age_history, pension_gross_history, label='公的年金受給額（額面合計）', color='#8E44AD', linestyle=':', linewidth=2.0)
+ax_g.axvline(42, color='orange', linestyle=':', label='夫 残業停止')
 ax_g.axvline(retirement_age_h, color='red', linestyle=':')
 ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_g.set_title('3. Gross Income Trend', fontsize=12, fontweight='bold')
-ax_g.set_ylabel('Gross Amount (10k JPY)', fontsize=10)
+ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
+ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
 ax_g.grid(True, linestyle='--', alpha=0.5)
 ax_g.legend(loc='upper right')
 
-ax_n.plot(age_history, household_net_history, label='Household Net Income', color='#27AE60', linewidth=2.5)
-ax_n.plot(age_history, husband_net_history, label="Husband's Net Salary", color='#3498DB', linestyle='--', linewidth=1.8)
-ax_n.plot(age_history, wife_net_history, label="Wife's Net Salary", color='#F39C12', linestyle='--', linewidth=1.8)
-ax_n.plot(ax_n.get_xticks(), [0]*len(ax_n.get_xticks()), alpha=0) # dummy
-ax_n.plot(age_history, pension_net_history, label='Net Pension', color='#9B59B6', linestyle=':', linewidth=2.0)
+ax_n.plot(age_history, household_net_history, label='世帯合計 手取り収入', color='#27AE60', linewidth=2.5)
+ax_n.plot(age_history, husband_net_history, label='夫 手取り給与', color='#3498DB', linestyle='--', linewidth=1.8)
+ax_n.plot(age_history, wife_net_history, label='妻 手取り給与', color='#F39C12', linestyle='--', linewidth=1.8)
+ax_n.plot(age_history, pension_net_history, label='公的年金（手取り換算）', color='#9B59B6', linestyle=':', linewidth=2.0)
 ax_n.axvline(42, color='orange', linestyle=':')
 ax_n.axvline(retirement_age_h, color='red', linestyle=':')
 ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_n.set_title('4. Net Income Trend', fontsize=12, fontweight='bold')
-ax_n.set_xlabel("Husband's Age", fontsize=10)
-ax_n.set_ylabel('Net Amount (10k JPY)', fontsize=10)
+ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
+ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
+ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
 ax_n.grid(True, linestyle='--', alpha=0.5)
 ax_n.legend(loc='upper right')
 plt.tight_layout()
 
 fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax3.plot(age_history, child1_history, label='Child 1', color='#3498DB', linewidth=2)
-if child_count >= 2: ax3.plot(age_history, child2_history, label='Child 2', color='#9B59B6', linewidth=2)
-ax3.plot(age_history, total_child_expense_history, label='Total Child Expenses', color='#E74C3C', linewidth=2.5, linestyle=':')
+ax3.plot(age_history, child1_history, label='第1子費用', color='#3498DB', linewidth=2)
+if child_count >= 2: ax3.plot(age_history, child2_history, label='第2子費用', color='#9B59B6', linewidth=2)
+ax3.plot(age_history, total_child_expense_history, label='総子ども費用', color='#E74C3C', linewidth=2.5, linestyle=':')
 ax3.axvline(retirement_age_h, color='red', linestyle=':')
 ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax3.set_title('5. Child Expenses Trend', fontsize=12, fontweight='bold')
-ax3.set_ylabel('Amount (10k JPY)', fontsize=10)
+ax3.set_title('5. 子ども費用の推移', fontsize=12, fontweight='bold')
+ax3.set_ylabel('金額 (万円)', fontsize=10)
 ax3.grid(True, linestyle='--', alpha=0.5)
 ax3.legend(loc='upper left')
 
 ax4.stackplot(age_history, cash_ratio_history, investment_ratio_history, stock_ratio_history, 
-              labels=['Cash Ratio (%)', 'Mutual Funds Ratio (%)', 'Stocks Ratio (%)'], 
+              labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'], 
               colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'])
 ax4.axvline(retirement_age_h, color='red', linestyle=':')
 ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax4.set_title('6. Asset Allocation Ratio', fontsize=12, fontweight='bold')
-ax4.set_xlabel("Husband's Age", fontsize=10)
-ax4.set_ylabel('Ratio (%)', fontsize=10)
+ax4.set_title('6. 資産構成比率の推移', fontsize=12, fontweight='bold')
+ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
+ax4.set_ylabel('比率 (%)', fontsize=10)
 ax4.set_ylim(0, 100)
 ax4.grid(True, linestyle='--', alpha=0.5)
 ax4.legend(loc='upper left')
