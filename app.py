@@ -1,35 +1,36 @@
+import os
+import platform
+import urllib.request
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-# 日本語フォントの設定（OSにインストールされている日本語フォントを自動探索して適用）
-import platform
 
-
-def get_japanese_font():
+# 確実に日本語を表示するためのフォント設定（Linux環境でも日本語フォントを自動取得）
+@st.cache_resource
+def setup_japanese_font():
   system = platform.system()
   if system == 'Darwin':  # macOS
     return 'Hiragino Sans'
-  elif system == 'Windows':
+  elif system == 'Windows':  # Windows
     return 'Meiryo'
   else:  # Linux (Streamlit Cloudなど)
-    # 利用可能な日本語フォントを探す
-    available_fonts = [f.name for f in fm.fontManager.ttflist]
-    for font in [
-        'IPAexGothic',
-        'IPAGothic',
-        'TakaoGothic',
-        'VL Gothic',
-        'Noto Sans CJK JP',
-        'DejaVu Sans',
-    ]:
-      if font in available_fonts:
-        return font
+    font_path = '/tmp/ipaexg.ttf'
+    if not os.path.exists(font_path):
+      try:
+        url = 'https://github.com/google/fonts/raw/main/ofl/ipaexgothic/IPAexGothic-Regular.ttf'
+        urllib.request.urlretrieve(url, font_path)
+      except Exception:
+        pass
+    if os.path.exists(font_path):
+      fm.fontManager.add_font(font_path)
+      font_prop = fm.FontProperties(fname=font_path)
+      return font_prop.get_name()
     return 'DejaVu Sans'
 
 
-japanese_font = get_japanese_font()
+japanese_font = setup_japanese_font()
 
 # グラフを高解像度・ポップで可愛いデザインにカスタマイズ
 plt.rcParams['figure.dpi'] = 150
