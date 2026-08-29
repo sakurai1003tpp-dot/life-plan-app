@@ -13,17 +13,15 @@ plt.rcParams['font.sans-serif'] = [
     'DejaVu Sans',
 ]
 
-# 画面設定とカスタムCSS（プロっぽいモダンなスタイリング）
-st.set_page_config(page_title='プレミアム・ライフプランシミュレーション', layout='wide')
+# 画面設定とカスタムCSS
+st.set_page_config(page_title='ライフプランシミュレーション', layout='wide')
 
 st.markdown(
     """
 <style>
-    /* 全体背景とフォントの調整 */
     .main {
         background-color: #F8FAFC;
     }
-    /* メトリックカードのデザイン */
     .metric-card {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
@@ -47,6 +45,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# 知的で洗練されたメインタイトル
 st.markdown(
     """
     <div style="margin-bottom: 20px;">
@@ -80,9 +79,9 @@ birth_interval = st.sidebar.slider('きょうだいの年齢差（年）', 1, 5,
 
 child_courses = {}
 course_labels = {
-    'PUBLIC_UNIV_RIKEI': '国公立・理系',
-    'PUBLIC_UNIV_PRIVATE': '私立文系・理系',
-    'ALL_PUBLIC': '全公立',
+    'ALL_PUBLIC': '大学まで全公立',
+    'PUBLIC_UNIV_RIKEI': '高校まで公立・大学は私立理系',
+    'PUBLIC_UNIV_BUNKEI': '高校まで公立・大学は私立文系',
 }
 if child_count >= 1:
   c1_choice = st.sidebar.selectbox(
@@ -143,7 +142,7 @@ regional_house_cost = st.sidebar.number_input(
 )
 
 # ------------------------------------------
-# 基本設定（固定値）と計算ロジック
+# 基本設定と計算ロジック
 # ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
@@ -249,24 +248,43 @@ def calculate_net_income(gross):
     return gross * 0.70
 
 
+# 公的データに基づく年齢別・進路別の年間教育費設定（単位：万円）
 def get_child_yearly_expense(c_age, course_type):
   if not (0 <= c_age <= 22):
     return 0
-  if c_age <= 6:
-    return 60
+  if c_age <= 2:
+    return 30
+  elif c_age <= 6:
+    return 35
   elif c_age <= 12:
-    return 90
+    return 34
   elif c_age <= 15:
-    return 110
+    return 54
   elif c_age <= 18:
-    return 100
+    return 51
   else:
-    if course_type == 'PUBLIC_UNIV_RIKEI':
-      return 260
-    elif course_type == 'PUBLIC_UNIV_PRIVATE':
-      return 220
+    if course_type == 'ALL_PUBLIC':
+      return 120
+    elif course_type == 'PUBLIC_UNIV_RIKEI':
+      return 205
+    elif course_type == 'PUBLIC_UNIV_BUNKEI':
+      return 172
     else:
-      return 180
+      return 120
+
+
+# 子どもの年齢に応じた追加の生活費（食費・日用品費等）を算出する関数
+def get_child_living_expense_addition(c_age):
+  if not (0 <= c_age <= 22):
+    return 0
+  if c_age <= 3:
+    return 15
+  elif c_age <= 12:
+    return 30
+  elif c_age <= 18:
+    return 55
+  else:
+    return 40
 
 
 # シミュレーション実行
@@ -348,8 +366,21 @@ for i in range(100 - current_age_h + 1):
         if (child_count > 0 and age_h >= first_birth_age_h)
         else 0
     )
+
+    total_child_living_addition = 0
+    if child_count >= 1:
+      c1_age = age_h - first_birth_age_h
+      total_child_living_addition += get_child_living_expense_addition(c1_age)
+    if child_count >= 2:
+      c2_age = age_h - (first_birth_age_h + birth_interval)
+      total_child_living_addition += get_child_living_expense_addition(c2_age)
+    if child_count >= 3:
+      c3_age = age_h - (first_birth_age_h + birth_interval * 2)
+      total_child_living_addition += get_child_living_expense_addition(c3_age)
+
+    base_living_with_children = living_expenses + total_child_living_addition
     annual_expense = (
-        living_expenses
+        base_living_with_children
         + current_housing
         + annual_travel_cost
         + general_medical_cost
@@ -455,7 +486,7 @@ for i in range(100 - current_age_h + 1):
   household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
-# KPIメトリクスカードの表示（最上部）
+# KPIメトリクスカードの表示
 # ------------------------------------------
 initial_total_wealth = init_cash_val + init_inv_val + init_stk_val
 peak_wealth = max(total_wealth_history)
@@ -513,7 +544,7 @@ with col4:
       f"""
         <div class="metric-card">
             <div class="metric-title">家族・進路設定</div>
-            <div class="metric-value" style="font-size: 1.1rem; padding-top: 5px;">{child_info_str}</div>
+            <div class="metric-value" style="font-size: 1.0rem; padding-top: 5px;">{child_info_str}</div>
         </div>
     """,
       unsafe_allow_html=True,
@@ -772,7 +803,7 @@ with tab4:
   plt.tight_layout()
   st.pyplot(fig_port)
 
-# CSVエクスポート機能の追加
+# CSVエクスポート機能
 st.markdown('---')
 st.subheader('📥 シミュレーションデータのダウンロード')
 df_export = pd.DataFrame({
