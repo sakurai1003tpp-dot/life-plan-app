@@ -231,13 +231,16 @@ reduced_income_years_w = sorted(list(set(reduced_income_years_w)))
 def calculate_husband_base_gross_income(age):
   if age < 29 or age >= retirement_age_h:
     return 0
-  elif age <= 42:
-    # 29歳から42歳まで、42歳時点で1,200万円となるよう滑らかに増加
-    return 532.72 + (age - 29) * ((1200.0 - 532.72) / 13)
+  elif age <= 41:
+    # 残業代込みの額面年収が41歳で1,200万円となるように基本給を設定
+    base_income_at_41 = 1200.0 / (1 + (1.25 * 45 * 12 / 1920))
+    return 532.72 + (age - 29) * ((base_income_at_41 - 532.72) / 12)
   else:
-    peak_target_income = 1400.0
-    start_income_at_42 = 1200.0
-    years_span = max(1, retirement_age_h - 42)
+    # 42歳で1,100万円、退職前年に1,500万円へ到達
+    peak_target_income = 1500.0
+    start_income_at_42 = 1100.0
+    last_working_age = retirement_age_h - 1
+    years_span = max(1, last_working_age - 42)
     current_offset = age - 42
     return start_income_at_42 + current_offset * (
         (peak_target_income - start_income_at_42) / years_span
