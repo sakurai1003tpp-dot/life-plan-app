@@ -159,6 +159,10 @@ expense_change_rate = st.sidebar.slider(
 max_cash_limit = st.sidebar.number_input(
     "現預金の保有上限 (万円)", 100, 5000, 1000, step=50
 )
+chart_scale = st.sidebar.slider(
+    "グラフの表示倍率", 0.5, 1.0, 0.7, step=0.1,
+    help="グラフの大きさを調整できます。",
+)
 
 st.sidebar.header("🏠 住宅・生活費・年間支出設定")
 living_expenses_monthly = st.sidebar.number_input(
@@ -594,7 +598,9 @@ tab1, tab2, tab3, tab4 = st.tabs(
 )
 
 with tab1:
-  fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+  fig1, (ax1, ax2) = plt.subplots(
+      2, 1, figsize=(10 * chart_scale, 11 * chart_scale), sharex=True
+  )
   fig1.patch.set_facecolor("#FFFDF9")
   ax1.set_facecolor("#FFFFFF")
   ax2.set_facecolor("#FFFFFF")
@@ -712,10 +718,12 @@ with tab1:
     ax.spines["bottom"].set_color("#D1D8E0")
 
   plt.tight_layout()
-  st.pyplot(fig1)
+  st.pyplot(fig1, use_container_width=False)
 
 with tab2:
-  fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+  fig_income, (ax_g, ax_n) = plt.subplots(
+      2, 1, figsize=(10 * chart_scale, 11 * chart_scale), sharex=True
+  )
   fig_income.patch.set_facecolor("#FFFDF9")
   ax_g.set_facecolor("#FFFFFF")
   ax_n.set_facecolor("#FFFFFF")
@@ -820,10 +828,10 @@ with tab2:
     ax.spines["bottom"].set_color("#D1D8E0")
 
   plt.tight_layout()
-  st.pyplot(fig_income)
+  st.pyplot(fig_income, use_container_width=False)
 
 with tab3:
-  fig_child, ax3 = plt.subplots(figsize=(10, 6))
+  fig_child, ax3 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
   fig_child.patch.set_facecolor("#FFFDF9")
   ax3.set_facecolor("#FFFFFF")
 
@@ -880,10 +888,10 @@ with tab3:
   ax3.spines["bottom"].set_color("#D1D8E0")
 
   plt.tight_layout()
-  st.pyplot(fig_child)
+  st.pyplot(fig_child, use_container_width=False)
 
 with tab4:
-  fig_port, ax4 = plt.subplots(figsize=(10, 6))
+  fig_port, ax4 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
   fig_port.patch.set_facecolor("#FFFDF9")
   ax4.set_facecolor("#FFFFFF")
 
@@ -917,7 +925,7 @@ with tab4:
   ax4.spines["bottom"].set_color("#D1D8E0")
 
   plt.tight_layout()
-  st.pyplot(fig_port)
+  st.pyplot(fig_port, use_container_width=False)
 
 # CSVエクスポート機能
 st.markdown("---")
