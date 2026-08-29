@@ -143,12 +143,19 @@ max_cash_limit = st.sidebar.number_input(
 )
 
 st.sidebar.header('🏠 住宅・生活費設定')
-living_expenses = st.sidebar.number_input(
-    '基本生活費 (年間・万円)', 0, 2000, 400, step=10
+living_expenses_monthly = st.sidebar.number_input(
+    '基本生活費 (毎月・万円)', 0, 100, 33, step=1
+)
+housing_expenses_monthly = st.sidebar.number_input(
+    '住居費 (毎月・万円)', 0, 50, 15, step=1
 )
 regional_house_cost = st.sidebar.number_input(
     '定年時 住宅購入費用 (万円)', 0, 20000, 5000, step=100
 )
+
+# 毎月入力を年間ベースに換算
+living_expenses = living_expenses_monthly * 12
+housing_expenses_base = housing_expenses_monthly * 12
 
 # ------------------------------------------
 # 基本設定と計算ロジック
@@ -163,7 +170,6 @@ investment_stop_age_h = 60
 retirement_payout_h = 2000
 retirement_payout_w = 500
 migration_housing_expenses = 50
-housing_expenses_base = 180
 annual_travel_cost = 30
 general_medical_cost = 5
 annual_social_cost = 20
