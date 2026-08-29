@@ -488,7 +488,11 @@ for i in range(100 - current_age_h + 1):
     c3_age = age_h - (first_birth_age_h + birth_interval * 2)
     c3_exp = get_child_yearly_expense(c3_age, child_courses[3])
 
-  total_child_expense = (c1_exp + c2_exp + c3_exp) * inflation_factor
+  # 教育費も物価上昇を反映し、子ども別費用と合計費用の表示を一致させる
+  c1_exp *= inflation_factor
+  c2_exp *= inflation_factor
+  c3_exp *= inflation_factor
+  total_child_expense = c1_exp + c2_exp + c3_exp
   pure_total_expense = (
       annual_expense + total_child_expense + extra_one_time_expense
   )
