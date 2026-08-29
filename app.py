@@ -175,10 +175,6 @@ expense_change_rate = st.sidebar.slider(
 max_cash_limit = st.sidebar.number_input(
     "現預金の保有上限 (万円)", 100, 5000, 1000, step=50
 )
-chart_scale = st.sidebar.slider(
-    "グラフの表示倍率", 0.5, 1.0, 0.7, step=0.1,
-    help="グラフの大きさを調整できます。",
-)
 
 st.sidebar.header("🏠 住宅・生活費・年間支出設定")
 living_expenses_monthly = st.sidebar.number_input(
@@ -199,9 +195,6 @@ annual_social_cost = st.sidebar.number_input(
 regional_house_cost = st.sidebar.number_input(
     "定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100
 )
-house_purchase_incidental_rate = st.sidebar.slider(
-    "住宅購入の諸費用率（%）", 0.0, 15.0, 7.0, step=0.5
-)
 annual_home_maintenance_cost = st.sidebar.number_input(
     "老後の住宅維持費・固定資産税（年額・万円）", 0, 300, 50, step=5
 )
@@ -210,6 +203,11 @@ annual_retirement_insurance_cost = st.sidebar.number_input(
 )
 next_year_one_time_expense = st.sidebar.number_input(
     "翌年の臨時支出（万円）", 0, 2000, 200, step=10
+)
+st.sidebar.header("📐 グラフ表示設定")
+chart_scale = st.sidebar.slider(
+    "グラフの表示倍率", 0.5, 1.0, 0.7, step=0.1,
+    help="グラフの大きさを調整できます。",
 )
 
 living_expenses = living_expenses_monthly * 12
@@ -504,9 +502,8 @@ for i in range(100 - current_age_h + 1):
   if age_h == retirement_age_h:
     sim_cash += sim_stock
     sim_stock = 0
-    inflated_house_purchase_cost = regional_house_cost * (
-        1 + house_purchase_incidental_rate / 100
-    ) * inflation_factor
+    # 住宅購入費には仲介・登記などの諸費用を含むものとして扱う
+    inflated_house_purchase_cost = regional_house_cost * inflation_factor
     needed = inflated_house_purchase_cost - sim_cash
     if needed > 0:
       sale = min(needed, sim_investment)
