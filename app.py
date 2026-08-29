@@ -55,7 +55,7 @@ st.markdown(
     """
     <div style="margin-bottom: 20px;">
         <h1 style="font-size: 1.4rem; font-weight: 600; color: #2B2D42; letter-spacing: -0.025em; margin-bottom: 4px;">
-            🌸 ほっこりライフプランシミュレーション
+            ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
             将来の資産形成・キャッシュフロー・教育費をやさしく可視化します
