@@ -73,7 +73,7 @@ st.markdown(
             ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費をやさしく可視化します
+            将来の資産形成・キャッシュフロー・教育費を可視化します
         </p>
     </div>
     """,
@@ -84,7 +84,7 @@ st.markdown("---")
 # ------------------------------------------
 # サイドバー設定パネル
 # ------------------------------------------
-if st.sidebar.button("🔄 サイドバーを含む全設定を初期値に戻す", use_container_width=True):
+if st.sidebar.button("🔄 全設定を初期値に戻す", use_container_width=True):
   st.session_state.clear()
   st.session_state["scroll_sidebar_to_top"] = True
   st.rerun()
