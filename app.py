@@ -161,9 +161,9 @@ current_cash = st.sidebar.number_input(
 current_investment = st.sidebar.number_input(
     "現在の投資信託 (万円)", 0, 50000, 1300, step=50
 )
-current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 300, step=50)
+current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
 annual_return_rate = st.sidebar.slider(
-    "投資信託の想定利回り (%)", 0.0, 15.0, 4.0, step=0.1
+    "投資信託の想定利回り (%)", 0.0, 15.0, 4.5, step=0.1
 )
 expense_change_rate = st.sidebar.slider(
     "インフレ率（年間生活費の上昇率 %）", 0.0, 5.0, 1.5, step=0.1
