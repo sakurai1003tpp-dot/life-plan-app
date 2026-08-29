@@ -83,7 +83,7 @@ st.markdown("---")
 # ------------------------------------------
 # サイドバー設定パネル
 # ------------------------------------------
-if st.sidebar.button("🔄 初期設定に戻す", use_container_width=True):
+if st.sidebar.button("🔄 サイドバーを含む全設定を初期値に戻す", use_container_width=True):
   st.session_state.clear()
   st.rerun()
 
