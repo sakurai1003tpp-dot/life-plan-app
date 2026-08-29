@@ -1,10 +1,13 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import matplotlib_fontja
+import matplotlib.font_manager as fm
 
 # グラフを高解像度（鮮明）に設定
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
+
+# 日本語フォントの設定（環境に合わせてフォントが見つからない場合のフォールバック）
+plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'Yu Gothic', 'Takao', 'MS Gothic', 'DejaVu Sans']
 
 # スマホでも見やすいように画面全体を使う設定
 st.set_page_config(page_title="ライフプラン・シミュレーション", layout="wide")
@@ -62,17 +65,17 @@ regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万
 # ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
-child_care_reduction_years = 5     
+child_care_reduction_years = 5       
 child_care_income_reduction_rate = 0.30  
-stock_return_rate = 1.5     
+stock_return_rate = 1.5      
 stock_dividend_yield = 2.5  
-min_cash_reserve = 500      
-max_cash_limit = 1000       
+min_cash_reserve = 500       
+max_cash_limit = 1000        
 investment_stop_age_h = 60  
 retirement_payout_h = 2000  
-retirement_payout_w = 500   
+retirement_payout_w = 500    
 migration_housing_expenses = 50 
-housing_expenses_base = 180     
+housing_expenses_base = 180      
 annual_travel_cost = 30         
 general_medical_cost = 5        
 annual_social_cost = 20         
@@ -83,9 +86,9 @@ migration_living_expense_ratio = 0.80
 migration_medical_cost_multiplier = 4.0 
 maternity_leave_per_child = 3
 
-car_maintenance_cost = 40      
-car_purchase_price = 300       
-car_replacement_cycle = 10     
+car_maintenance_cost = 40       
+car_purchase_price = 300        
+car_replacement_cycle = 10      
 annual_car_depreciation = car_purchase_price / car_replacement_cycle
 total_annual_car_cost = car_maintenance_cost + annual_car_depreciation
 
@@ -174,7 +177,7 @@ net_income_history, total_expense_history, annual_balance_history = [], [], []
 child1_history, child2_history, child3_history, total_child_expense_history = [], [], [], []
 cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
 husband_gross_history, wife_gross_history, pension_gross_history, household_gross_history = [], [], [], []
-husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], []
+husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], [], []
 
 # --- ループ処理 ---
 for i in range(100 - current_age_h + 1):
@@ -347,7 +350,7 @@ ax_n.plot(age_history, pension_net_history, label='公的年金（手取り換�
 ax_n.axvline(42, color='orange', linestyle=':')
 ax_n.axvline(retirement_age_h, color='red', linestyle=':')
 ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
+ax_n.set_title('4. 手取り収入の生涯推移', fontsize=10)
 ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
 ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
 ax_n.grid(True, linestyle='--', alpha=0.5)
