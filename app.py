@@ -1,6 +1,5 @@
 import os
 import platform
-import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
@@ -8,27 +7,12 @@ import streamlit as st
 # ------------------------------------------
 # 日本語フォントの設定（文字化け防止）
 # ------------------------------------------
-system = platform.system()
-if system == 'Darwin':
-    font_family = 'Hiragino Sans'
-elif system == 'Windows':
-    font_family = 'Meiryo'
-else:
-    # Linux環境やStreamlit Cloudでは利用可能なゴシック体を探索・設定
-    font_list = [f.name for f in fm.fontManager.ttflist]
-    if 'IPAexGothic' in font_list:
-        font_family = 'IPAexGothic'
-    elif 'IPAGothic' in font_list:
-        font_family = 'IPAGothic'
-    elif 'Noto Sans CJK JP' in font_list:
-        font_family = 'Noto Sans CJK JP'
-    elif 'TakaoGothic' in font_list:
-        font_family = 'TakaoGothic'
-    else:
-        font_family = 'DejaVu Sans'
+try:
+    import japanize_matplotlib
+except ImportError:
+    pass
 
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = [font_family, 'DejaVu Sans']
+# フォールバック設定（万が一japanize_matplotlibが動かない環境用の保険）
 plt.rcParams['axes.unicode_minus'] = False
 
 # グラフを高解像度・ポップで可愛いデザインにカスタマイズ
