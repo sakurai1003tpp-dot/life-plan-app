@@ -222,16 +222,26 @@ if st.session_state.pop("scroll_sidebar_to_top", False):
       <script>
         const scrollSidebarToTop = () => {
           try {
-            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
-            if (!sidebar) return;
-            [sidebar, ...sidebar.querySelectorAll('*')]
-              .filter((element) => element.scrollHeight > element.clientHeight)
-              .forEach((element) => { element.scrollTop = 0; });
+            const parentDocument = window.parent.document;
+            const sidebar = parentDocument.querySelector('[data-testid="stSidebar"]');
+            const sidebarContent = parentDocument.querySelector(
+              '[data-testid="stSidebarUserContent"], [data-testid="stSidebarContent"]'
+            );
+            const target = sidebarContent || sidebar;
+            if (!target) return;
+
+            // スクロール可能な親要素を含めて先頭へ戻す
+            let element = target;
+            while (element && element !== parentDocument.body) {
+              element.scrollTop = 0;
+              element = element.parentElement;
+            }
+            target.scrollIntoView({ block: 'start' });
           } catch (error) {
             // スクロール制御が利用できない環境では何もしない
           }
         };
-        [0, 150, 400].forEach((delay) => setTimeout(scrollSidebarToTop, delay));
+        [0, 150, 400, 800].forEach((delay) => setTimeout(scrollSidebarToTop, delay));
       </script>
       """,
       height=0,
