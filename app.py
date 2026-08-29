@@ -16,14 +16,22 @@ japanese_font = next(
     (font for font in japanese_font_candidates if font in available_fonts),
     "DejaVu Sans",
 )
-# app.py と同じフォルダに置いたフォントを使うため、OSやPythonのバージョンに依存しません。
-JAPANESE_FONT_PATH = Path(__file__).with_name("NotoSansJP-VF.ttf")
-font_manager.fontManager.addfont(JAPANESE_FONT_PATH)
-japanese_font = font_manager.FontProperties(fname=JAPANESE_FONT_PATH).get_name()
 plt.rcParams["font.family"] = japanese_font
 plt.rcParams["font.sans-serif"] = [japanese_font, "DejaVu Sans", "Arial"]
 plt.rcParams["axes.unicode_minus"] = False
-plt.rcParams["font.sans-serif"] = [japanese_font]
+# app.py と同じフォルダに置いたフォントを使うため、OSやPythonのバージョンに依存しません。
+JAPANESE_FONT_PATH = Path(__file__).with_name("NotoSansJP-VF.ttf")
+if JAPANESE_FONT_PATH.exists():
+  font_manager.fontManager.addfont(JAPANESE_FONT_PATH)
+  japanese_font = font_manager.FontProperties(fname=JAPANESE_FONT_PATH).get_name()
+  plt.rcParams["font.family"] = japanese_font
+  plt.rcParams["font.sans-serif"] = [japanese_font]
+else:
+  st.error(
+      "日本語フォントが見つかりません。app.pyと同じフォルダに"
+      "「NotoSansJP-VF.ttf」を追加してください。"
+  )
+  st.stop()
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 300
@@ -391,6 +399,8 @@ for i in range(100 - current_age_h + 1):
   current_pension_net = (
       current_pension_gross * 0.85 if current_pension_gross > 0 else 0
   )
+  # 年金は額面と手取りを同額として扱う
+  current_pension_net = current_pension_gross
 
   total_gross = (
       calculate_husband_gross_income(age_h)
