@@ -1,43 +1,37 @@
 import os
 import platform
-import urllib.request
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
+# ------------------------------------------
+# 日本語フォントの設定（文字化け防止）
+# ------------------------------------------
+system = platform.system()
+if system == 'Darwin':
+  font_family = 'Hiragino Sans'
+elif system == 'Windows':
+  font_family = 'Meiryo'
+else:
+  # Linux環境やStreamlit Cloudでは利用可能なゴシック体を探索・設定
+  font_list = [f.name for f in fm.fontManager.ttflist]
+  if 'IPAexGothic' in font_list:
+    font_family = 'IPAexGothic'
+  elif 'IPAGothic' in font_list:
+    font_family = 'IPAGothic'
+  elif 'Noto Sans CJK JP' in font_list:
+    font_family = 'Noto Sans CJK JP'
+  else:
+    font_family = 'DejaVu Sans'
 
-# 確実に日本語を表示するためのフォント設定（Linux環境でも日本語フォントを自動取得）
-@st.cache_resource
-def setup_japanese_font():
-  system = platform.system()
-  if system == 'Darwin':  # macOS
-    return 'Hiragino Sans'
-  elif system == 'Windows':  # Windows
-    return 'Meiryo'
-  else:  # Linux (Streamlit Cloudなど)
-    font_path = '/tmp/ipaexg.ttf'
-    if not os.path.exists(font_path):
-      try:
-        url = 'https://github.com/google/fonts/raw/main/ofl/ipaexgothic/IPAexGothic-Regular.ttf'
-        urllib.request.urlretrieve(url, font_path)
-      except Exception:
-        pass
-    if os.path.exists(font_path):
-      fm.fontManager.add_font(font_path)
-      font_prop = fm.FontProperties(fname=font_path)
-      return font_prop.get_name()
-    return 'DejaVu Sans'
-
-
-japanese_font = setup_japanese_font()
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = [font_family, 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
 
 # グラフを高解像度・ポップで可愛いデザインにカスタマイズ
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = [japanese_font, 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
 
 # パステル＆ポップなカラーパレット
 COLOR_PRIMARY = '#FF6B6B'  # コーラルピンク
@@ -343,7 +337,7 @@ def get_child_living_expense_addition(c_age):
 
 
 # ------------------------------------------
-# シミュレーション実行
+# シミュレーション実行（お示しいただいた変数構造）
 # ------------------------------------------
 age_history, total_wealth_history, cash_history = [], [], []
 investment_history, stock_history = [], []
@@ -616,7 +610,6 @@ with tab1:
   ax1.set_facecolor('#FFFFFF')
   ax2.set_facecolor('#FFFFFF')
 
-  # グラフ1: 資産残高
   ax1.plot(
       age_history,
       total_wealth_history,
@@ -668,7 +661,6 @@ with tab1:
   ax1.grid(True, linestyle=':', alpha=0.6, color='#E4E5E9')
   ax1.legend(loc='upper left', frameon=True, facecolor='#FFFFFF', edgecolor='none')
 
-  # グラフ2: 収支
   ax2.plot(
       age_history,
       net_income_history,
