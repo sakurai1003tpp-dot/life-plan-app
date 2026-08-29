@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from pathlib import Path
 
 # ------------------------------------------
@@ -85,6 +86,7 @@ st.markdown("---")
 # ------------------------------------------
 if st.sidebar.button("🔄 サイドバーを含む全設定を初期値に戻す", use_container_width=True):
   st.session_state.clear()
+  st.session_state["scroll_sidebar_to_top"] = True
   st.rerun()
 
 st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
@@ -213,6 +215,27 @@ chart_scale = st.sidebar.slider(
     "グラフの表示倍率", 0.5, 1.0, 1.0, step=0.1,
     help="グラフの大きさを調整できます。",
 )
+
+if st.session_state.pop("scroll_sidebar_to_top", False):
+  components.html(
+      """
+      <script>
+        const scrollSidebarToTop = () => {
+          try {
+            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+            if (!sidebar) return;
+            [sidebar, ...sidebar.querySelectorAll('*')]
+              .filter((element) => element.scrollHeight > element.clientHeight)
+              .forEach((element) => { element.scrollTop = 0; });
+          } catch (error) {
+            // スクロール制御が利用できない環境では何もしない
+          }
+        };
+        [0, 150, 400].forEach((delay) => setTimeout(scrollSidebarToTop, delay));
+      </script>
+      """,
+      height=0,
+  )
 
 living_expenses = living_expenses_monthly * 12
 housing_expenses_base = housing_expenses_monthly * 12
