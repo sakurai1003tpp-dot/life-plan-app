@@ -287,7 +287,9 @@ def get_child_living_expense_addition(c_age):
     return 40
 
 
-# シミュレーション実行
+# ------------------------------------------
+# シミュレーション実行（入力値の独立・安全化）
+# ------------------------------------------
 age_history, total_wealth_history, cash_history = [], [], []
 investment_history, stock_history = [], []
 net_income_history, total_expense_history, annual_balance_history = [], [], []
@@ -307,16 +309,21 @@ init_cash_val = current_cash
 init_inv_val = current_investment
 init_stk_val = current_stock
 
+# シミュレーション専用変数に退避
+sim_cash = current_cash
+sim_investment = current_investment
+sim_stock = current_stock
+
 for i in range(100 - current_age_h + 1):
   age_h = current_age_h + i
   age_w = current_age_w + i
 
   annual_dividend = 0
   if i > 0:
-    current_investment = current_investment * (1 + annual_return_rate / 100)
-    current_stock = current_stock * (1 + stock_return_rate / 100)
+    sim_investment = sim_investment * (1 + annual_return_rate / 100)
+    sim_stock = sim_stock * (1 + stock_return_rate / 100)
     annual_dividend = (
-        current_stock * (stock_dividend_yield / 100)
+        sim_stock * (stock_dividend_yield / 100)
     ) * 0.79685
 
   net_h = (
@@ -418,54 +425,48 @@ for i in range(100 - current_age_h + 1):
   )
   pure_annual_balance = pure_annual_income - pure_total_expense
 
-  current_cash += pure_annual_balance + extra_retirement_cash
+  sim_cash += pure_annual_balance + extra_retirement_cash
 
   if age_h == retirement_age_h:
-    current_cash += current_stock
-    current_stock = 0
-    needed = regional_house_cost - current_cash
+    sim_cash += sim_stock
+    sim_stock = 0
+    needed = regional_house_cost - sim_cash
     if needed > 0:
-      sale = min(needed, current_investment)
-      current_investment -= sale
-      current_cash += sale
-    current_cash -= regional_house_cost
+      sale = min(needed, sim_investment)
+      sim_investment -= sale
+      sim_cash += sale
+    sim_cash -= regional_house_cost
 
-  if current_cash < min_cash_reserve:
-    shortfall = min_cash_reserve - current_cash
-    if current_stock >= shortfall:
-      current_stock -= shortfall
-      current_cash += shortfall
+  if sim_cash < min_cash_reserve:
+    shortfall = min_cash_reserve - sim_cash
+    if sim_stock >= shortfall:
+      sim_stock -= shortfall
+      sim_cash += shortfall
     else:
-      shortfall -= current_stock
-      current_cash += current_stock
-      current_stock = 0
-      if current_investment >= shortfall:
-        current_investment -= shortfall
-        current_cash += shortfall
+      shortfall -= sim_stock
+      sim_cash += sim_stock
+      sim_stock = 0
+      if sim_investment >= shortfall:
+        sim_investment -= shortfall
+        sim_cash += shortfall
       else:
-        current_cash += current_investment
-        current_investment = 0
-  elif age_h < investment_stop_age_h and current_cash > max_cash_limit:
-    excess = current_cash - max_cash_limit
-    current_cash = max_cash_limit
-    current_investment += excess
+        sim_cash += sim_investment
+        sim_investment = 0
+  elif age_h < investment_stop_age_h and sim_cash > max_cash_limit:
+    excess = sim_cash - max_cash_limit
+    sim_cash = max_cash_limit
+    sim_investment += excess
 
-  total_wealth = current_cash + current_investment + current_stock
-  c_ratio = (
-      (current_cash / total_wealth) * 100 if total_wealth > 0 else 100
-  )
-  i_ratio = (
-      (current_investment / total_wealth) * 100 if total_wealth > 0 else 0
-  )
-  s_ratio = (
-      (current_stock / total_wealth) * 100 if total_wealth > 0 else 0
-  )
+  total_wealth = sim_cash + sim_investment + sim_stock
+  c_ratio = (sim_cash / total_wealth) * 100 if total_wealth > 0 else 100
+  i_ratio = (sim_investment / total_wealth) * 100 if total_wealth > 0 else 0
+  s_ratio = (sim_stock / total_wealth) * 100 if total_wealth > 0 else 0
 
   age_history.append(age_h)
   total_wealth_history.append(total_wealth)
-  cash_history.append(current_cash)
-  investment_history.append(current_investment)
-  stock_history.append(current_stock)
+  cash_history.append(sim_cash)
+  investment_history.append(sim_investment)
+  stock_history.append(sim_stock)
   net_income_history.append(pure_annual_income)
   total_expense_history.append(pure_total_expense)
   annual_balance_history.append(pure_annual_balance)
