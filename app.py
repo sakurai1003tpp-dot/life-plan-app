@@ -27,8 +27,8 @@ else:
     else:
         font_family = 'DejaVu Sans'
 
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = [font_family, 'DejaVu Sans']
+# 修正：font.familyに直接優先するフォントリストを設定する
+plt.rcParams['font.family'] = [font_family, 'sans-serif']
 plt.rcParams['axes.unicode_minus'] = False
 
 # グラフを高解像度・ポップで可愛いデザインにカスタマイズ
