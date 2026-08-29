@@ -1,20 +1,49 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
+import pandas as pd
 
 # グラフを高解像度（鮮明）に設定
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
-
-# 日本語フォントの設定（環境に合わせてフォントが見つからない場合のフォールバック）
 plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'Yu Gothic', 'Takao', 'MS Gothic', 'DejaVu Sans']
 
-# スマホでも見やすいように画面全体を使う設定
-st.set_page_config(page_title="ライフプラン・シミュレーション", layout="wide")
-st.title("📊 ライフプラン・シミュレーション")
+# 画面設定とカスタムCSS（プロっぽいモダンなスタイリング）
+st.set_page_config(page_title="プレミアム・ライフプランシミュレーション", layout="wide")
+
+st.markdown("""
+<style>
+    /* 全体背景とフォントの調整 */
+    .main {
+        background-color: #F8FAFC;
+    }
+    /* メトリックカードのデザイン */
+    .metric-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .metric-title {
+        font-size: 0.85rem;
+        color: #64748B;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    .metric-value {
+        font-size: 1.6rem;
+        color: #0F172A;
+        font-weight: 700;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("📊 プレミアム・ライフプランシミュレーション")
+st.markdown("資産形成・キャッシュフロー・教育費の最適化をリアルタイムで可視化します。")
+st.markdown("---")
 
 # ------------------------------------------
-# サイドバーに設定パネルを作成
+# サイドバー設定パネル
 # ------------------------------------------
 st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
 current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
@@ -61,7 +90,7 @@ living_expenses = st.sidebar.number_input("基本生活費 (年間・万円)", 0
 regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
 
 # ------------------------------------------
-# 基本設定（固定値）
+# 基本設定（固定値）と計算ロジック
 # ------------------------------------------
 overtime_hours_per_month = 45
 overtime_multiplier = 1.25
@@ -92,7 +121,6 @@ car_replacement_cycle = 10
 annual_car_depreciation = car_purchase_price / car_replacement_cycle
 total_annual_car_cost = car_maintenance_cost + annual_car_depreciation
 
-# --- 出産・育休期間の計算 ---
 birth_ages_h, birth_ages_w = [], []
 if child_count > 0:
     for n in range(child_count):
@@ -113,7 +141,6 @@ for b_w in birth_ages_w:
         reduced_income_years_w.append(start_y + y)
 reduced_income_years_w = sorted(list(set(reduced_income_years_w)))
 
-# --- 収入・年金計算関数 ---
 def calculate_husband_base_gross_income(age):
     if age < 29 or age >= retirement_age_h: return 0
     elif age <= 41: 
@@ -153,33 +180,28 @@ def calculate_net_income(gross):
     else: return gross * 0.70
 
 def get_child_yearly_expense(c_age, course_type):
-    if not (0 <= c_age <= 22):
-        return 0
-    if c_age <= 6:
-        return 60
-    elif c_age <= 12:
-        return 90
-    elif c_age <= 15:
-        return 110
-    elif c_age <= 18:
-        return 100
+    if not (0 <= c_age <= 22): return 0
+    if c_age <= 6: return 60
+    elif c_age <= 12: return 90
+    elif c_age <= 15: return 110
+    elif c_age <= 18: return 100
     else:
-        if course_type == 'PUBLIC_UNIV_RIKEI':
-            return 260
-        elif course_type == 'PUBLIC_UNIV_PRIVATE':
-            return 220
-        else:
-            return 180
+        if course_type == 'PUBLIC_UNIV_RIKEI': return 260
+        elif course_type == 'PUBLIC_UNIV_PRIVATE': return 220
+        else: return 180
 
-# --- シミュレーション用リスト ---
+# シミュレーション実行
 age_history, total_wealth_history, cash_history, investment_history, stock_history = [], [], [], [], []
 net_income_history, total_expense_history, annual_balance_history = [], [], []
 child1_history, child2_history, child3_history, total_child_expense_history = [], [], [], []
 cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
 husband_gross_history, wife_gross_history, pension_gross_history, household_gross_history = [], [], [], []
-husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], [], []
+husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], []
 
-# --- ループ処理 ---
+init_cash_val = current_cash
+init_inv_val = current_investment
+init_stk_val = current_stock
+
 for i in range(100 - current_age_h + 1):
     age_h = current_age_h + i
     age_w = current_age_w + i
@@ -301,92 +323,156 @@ for i in range(100 - current_age_h + 1):
     household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
-# グラフ描画
+# KPIメトリクスカードの表示（最上部）
 # ------------------------------------------
-fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax1.plot(age_history, total_wealth_history, label='総資産額', color='#0F4C81', linewidth=2.5)
-ax1.plot(age_history, cash_history, label='現預金（上限1000万円で固定）', color='#2E7D32', linestyle='--', linewidth=1.8)
-ax1.plot(age_history, investment_history, label=f'投資信託 (利回り{annual_return_rate}%)', color='#E67E22', linestyle='--', linewidth=1.8)
-ax1.plot(age_history, stock_history, label='株式', color='#8E44AD', linestyle='--', linewidth=1.8)
-ax1.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
-ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
-ax1.set_ylabel('金額 (万円)', fontsize=10)
-ax1.grid(True, linestyle='--', alpha=0.5)
-ax1.legend(loc='upper left')
+initial_total_wealth = init_cash_val + init_inv_val + init_stk_val
+peak_wealth = max(total_wealth_history)
+final_wealth = total_wealth_history[-1]
 
-ax2.plot(age_history, net_income_history, label='世帯手取り収入（配当金込）', color='#2980B9', linewidth=1.8)
-ax2.plot(age_history, total_expense_history, label='年間総支出', color='#C0392B', linewidth=1.8)
-ax2.plot(age_history, annual_balance_history, label='年間収支', color='#333333', linewidth=1.5, linestyle='-.')
-ax2.fill_between(age_history, annual_balance_history, 0, where=[b >= 0 for b in annual_balance_history], color='#27AE60', alpha=0.3, interpolate=True)
-ax2.fill_between(age_history, annual_balance_history, 0, where=[b < 0 for b in annual_balance_history], color='#E74C3C', alpha=0.3, interpolate=True)
-ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
-ax2.axvline(retirement_age_h, color='red', linestyle=':')
-ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax2.set_title('2. 年間手取り収入・年間支出・年間収支の推移', fontsize=12, fontweight='bold')
-ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
-ax2.set_ylabel('金額 (万円)', fontsize=10)
-ax2.grid(True, linestyle='--', alpha=0.5)
-ax2.legend(loc='upper left')
-plt.tight_layout()
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">現在の総資産</div>
+            <div class="metric-value">{initial_total_wealth:,.0f} 万円</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">資産プーク時（年齢: {age_history[total_wealth_history.index(peak_wealth)]}歳）</div>
+            <div class="metric-value">{peak_wealth:,.0f} 万円</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">100歳時点の残高</div>
+            <div class="metric-value">{final_wealth:,.0f} 万円</div>
+        </div>
+    """, unsafe_allow_html=True)
+with col4:
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">夫の退職時年齢</div>
+            <div class="metric-value">{retirement_age_h} 歳</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax_g.plot(age_history, household_gross_history, label='世帯合計 額面収入（給与＋年金）', color='#2C3E50', linewidth=2.5)
-ax_g.plot(age_history, husband_gross_history, label='夫 額面給与収入', color='#2980B9', linestyle='--', linewidth=1.8)
-ax_g.plot(age_history, wife_gross_history, label='妻 額面給与収入', color='#E67E22', linestyle='--', linewidth=1.8)
-ax_g.plot(age_history, pension_gross_history, label='公的年金受給額（額面合計）', color='#8E44AD', linestyle=':', linewidth=2.0)
-ax_g.axvline(42, color='orange', linestyle=':', label='夫 残業停止')
-ax_g.axvline(retirement_age_h, color='red', linestyle=':')
-ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
-ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
-ax_g.grid(True, linestyle='--', alpha=0.5)
-ax_g.legend(loc='upper right')
+st.markdown("<br>", unsafe_allow_html=True)
 
-ax_n.plot(age_history, household_net_history, label='世帯合計 手取り収入', color='#27AE60', linewidth=2.5)
-ax_n.plot(age_history, husband_net_history, label='夫 手取り給与', color='#3498DB', linestyle='--', linewidth=1.8)
-ax_n.plot(age_history, wife_net_history, label='妻 手取り給与', color='#F39C12', linestyle='--', linewidth=1.8)
-ax_n.plot(age_history, pension_net_history, label='公的年金（手取り換算）', color='#9B59B6', linestyle=':', linewidth=2.0)
-ax_n.axvline(42, color='orange', linestyle=':')
-ax_n.axvline(retirement_age_h, color='red', linestyle=':')
-ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax_n.set_title('4. 手取り収入の生涯推移', fontsize=10)
-ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
-ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
-ax_n.grid(True, linestyle='--', alpha=0.5)
-ax_n.legend(loc='upper right')
-plt.tight_layout()
+# ------------------------------------------
+# タブによる情報の整理
+# ------------------------------------------
+tab1, tab2, tab3 = st.tabs(["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て・ポートフォリオ"])
 
-fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-if child_count >= 1:
-    ax3.plot(age_history, child1_history, label=f'第1子 ({course_labels[child_courses[1]]})', color='#3498DB', linewidth=2)
-if child_count >= 2:
-    ax3.plot(age_history, child2_history, label=f'第2子 ({course_labels[child_courses[2]]})', color='#9B59B6', linewidth=2)
-if child_count >= 3:
-    ax3.plot(age_history, child3_history, label=f'第3子 ({course_labels[child_courses[3]]})', color='#2ECC71', linewidth=2)
+with tab1:
+    fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    ax1.plot(age_history, total_wealth_history, label='総資産額', color='#0F4C81', linewidth=2.5)
+    ax1.plot(age_history, cash_history, label='現預金（上限1000万円で固定）', color='#2E7D32', linestyle='--', linewidth=1.8)
+    ax1.plot(age_history, investment_history, label=f'投資信託 (利回り{annual_return_rate}%)', color='#E67E22', linestyle='--', linewidth=1.8)
+    ax1.plot(age_history, stock_history, label='株式', color='#8E44AD', linestyle='--', linewidth=1.8)
+    ax1.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
+    ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('金額 (万円)', fontsize=10)
+    ax1.grid(True, linestyle='--', alpha=0.5)
+    ax1.legend(loc='upper left')
 
-ax3.plot(age_history, total_child_expense_history, label='総子ども費用', color='#E74C3C', linewidth=2.5, linestyle=':')
-ax3.axvline(retirement_age_h, color='red', linestyle=':')
-ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax3.set_title('5. 子ども費用の推移', fontsize=12, fontweight='bold')
-ax3.set_ylabel('金額 (万円)', fontsize=10)
-ax3.grid(True, linestyle='--', alpha=0.5)
-ax3.legend(loc='upper left')
+    ax2.plot(age_history, net_income_history, label='世帯手取り収入（配当金込）', color='#2980B9', linewidth=1.8)
+    ax2.plot(age_history, total_expense_history, label='年間総支出', color='#C0392B', linewidth=1.8)
+    ax2.plot(age_history, annual_balance_history, label='年間収支', color='#333333', linewidth=1.5, linestyle='-.')
+    ax2.fill_between(age_history, annual_balance_history, 0, where=[b >= 0 for b in annual_balance_history], color='#27AE60', alpha=0.3, interpolate=True)
+    ax2.fill_between(age_history, annual_balance_history, 0, where=[b < 0 for b in annual_balance_history], color='#E74C3C', alpha=0.3, interpolate=True)
+    ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
+    ax2.axvline(retirement_age_h, color='red', linestyle=':')
+    ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax2.set_title('2. 年間手取り収入・年間支出・年間収支の推移', fontsize=12, fontweight='bold')
+    ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax2.set_ylabel('金額 (万円)', fontsize=10)
+    ax2.grid(True, linestyle='--', alpha=0.5)
+    ax2.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig1)
 
-ax4.stackplot(age_history, cash_ratio_history, investment_ratio_history, stock_ratio_history, 
-              labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'], 
-              colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'])
-ax4.axvline(retirement_age_h, color='red', linestyle=':')
-ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-ax4.set_title('6. 資産構成比率の推移', fontsize=12, fontweight='bold')
-ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
-ax4.set_ylabel('比率 (%)', fontsize=10)
-ax4.set_ylim(0, 100)
-ax4.grid(True, linestyle='--', alpha=0.5)
-ax4.legend(loc='upper left')
-plt.tight_layout()
+with tab2:
+    fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    ax_g.plot(age_history, household_gross_history, label='世帯合計 額面収入（給与＋年金）', color='#2C3E50', linewidth=2.5)
+    ax_g.plot(age_history, husband_gross_history, label='夫 額面給与収入', color='#2980B9', linestyle='--', linewidth=1.8)
+    ax_g.plot(age_history, wife_gross_history, label='妻 額面給与収入', color='#E67E22', linestyle='--', linewidth=1.8)
+    ax_g.plot(age_history, pension_gross_history, label='公的年金受給額（額面合計）', color='#8E44AD', linestyle=':', linewidth=2.0)
+    ax_g.axvline(42, color='orange', linestyle=':', label='夫 残業停止')
+    ax_g.axvline(retirement_age_h, color='red', linestyle=':')
+    ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
+    ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
+    ax_g.grid(True, linestyle='--', alpha=0.5)
+    ax_g.legend(loc='upper right')
 
-# Streamlit出力
-st.pyplot(fig1)
-st.pyplot(fig_income)
-st.pyplot(fig2)
+    ax_n.plot(age_history, household_net_history, label='世帯合計 手取り収入', color='#27AE60', linewidth=2.5)
+    ax_n.plot(age_history, husband_net_history, label='夫 手取り給与', color='#3498DB', linestyle='--', linewidth=1.8)
+    ax_n.plot(age_history, wife_net_history, label='妻 手取り給与', color='#F39C12', linestyle='--', linewidth=1.8)
+    ax_n.plot(age_history, pension_net_history, label='公的年金（手取り換算）', color='#9B59B6', linestyle=':', linewidth=2.0)
+    ax_n.axvline(42, color='orange', linestyle=':')
+    ax_n.axvline(retirement_age_h, color='red', linestyle=':')
+    ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
+    ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
+    ax_n.grid(True, linestyle='--', alpha=0.5)
+    ax_n.legend(loc='upper right')
+    plt.tight_layout()
+    st.pyplot(fig_income)
+
+with tab3:
+    fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    if child_count >= 1:
+        ax3.plot(age_history, child1_history, label=f'第1子 ({course_labels[child_courses[1]]})', color='#3498DB', linewidth=2)
+    if child_count >= 2:
+        ax3.plot(age_history, child2_history, label=f'第2子 ({course_labels[child_courses[2]]})', color='#9B59B6', linewidth=2)
+    if child_count >= 3:
+        ax3.plot(age_history, child3_history, label=f'第3子 ({course_labels[child_courses[3]]})', color='#2ECC71', linewidth=2)
+
+    ax3.plot(age_history, total_child_expense_history, label='総子ども費用', color='#E74C3C', linewidth=2.5, linestyle=':')
+    ax3.axvline(retirement_age_h, color='red', linestyle=':')
+    ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax3.set_title('5. 子ども費用の推移', fontsize=12, fontweight='bold')
+    ax3.set_ylabel('金額 (万円)', fontsize=10)
+    ax3.grid(True, linestyle='--', alpha=0.5)
+    ax3.legend(loc='upper left')
+
+    ax4.stackplot(age_history, cash_ratio_history, investment_ratio_history, stock_ratio_history, 
+                  labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'], 
+                  colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'])
+    ax4.axvline(retirement_age_h, color='red', linestyle=':')
+    ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax4.set_title('6. 資産構成比率の推移', fontsize=12, fontweight='bold')
+    ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax4.set_ylabel('比率 (%)', fontsize=10)
+    ax4.set_ylim(0, 100)
+    ax4.grid(True, linestyle='--', alpha=0.5)
+    ax4.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig2)
+
+# CSVエクスポート機能の追加
+st.markdown("---")
+st.subheader("📥 シミュレーションデータのダウンロード")
+df_export = pd.DataFrame({
+    "夫の年齢": age_history,
+    "総資産額(万円)": total_wealth_history,
+    "現預金(万円)": cash_history,
+    "投資信託(万円)": investment_history,
+    "株式(万円)": stock_history,
+    "世帯手取り収入(万円)": net_income_history,
+    "年間総支出(万円)": total_expense_history,
+    "年間収支(万円)": annual_balance_history
+})
+
+csv_data = df_export.to_csv(index=False).encode('utf-8')
+st.download_button(
+    label="CSV形式で全データをダウンロード",
+    data=csv_data,
+    file_name="life_plan_simulation.csv",
+    mime="text/csv"
+)
