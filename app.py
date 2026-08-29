@@ -1,17 +1,20 @@
-import os
-import platform
-import matplotlib.pyplot as plt
-import pandas as pd
 import streamlit as st
 
-# ------------------------------------------
-# 日本語フォントの設定（文字化け防止）
-# ------------------------------------------
-try:
-    import japanize_matplotlib
-except ImportError:
-    pass
+import matplotlib.pyplot as plt
 
+import numpy as np
+
+
+
+# 日本語フォント対応（失敗時はデフォルトフォント）
+
+try:
+
+    import japanize_matplotlib
+
+except ImportError:
+
+    pass
 # フォールバック設定（万が一japanize_matplotlibが動かない環境用の保険）
 plt.rcParams['axes.unicode_minus'] = False
 
