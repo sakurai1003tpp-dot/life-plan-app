@@ -111,6 +111,10 @@ birth_interval = st.sidebar.slider("きょうだいの年齢差（年）", 1, 5,
 maternity_leave_per_child = st.sidebar.selectbox(
     "子1人あたりの産休・育休期間（年）", [1, 2, 3], index=1
 )
+nursery_cost_0_to_2 = st.sidebar.number_input(
+    "0〜2歳の保育費等（年額・万円）", 0, 200, 30, step=5,
+    help="保育料は自治体・世帯所得・保育時間で大きく異なるため、実額を設定してください。",
+)
 
 child_courses = {}
 course_labels = {
@@ -317,40 +321,50 @@ def calculate_net_income(gross):
 
 
 def get_child_yearly_expense(c_age, course_type):
-  if not (0 <= c_age <= 22):
+  """教育費。小中高は文科省、大学はJASSO・文科省の統計を使用。"""
+  if not (0 <= c_age <= 21):
     return 0
   if c_age <= 2:
-    return 30
-  elif c_age <= 6:
-    return 35
-  elif c_age <= 12:
-    return 34
-  elif c_age <= 15:
-    return 54
-  elif c_age <= 18:
-    return 51
+    return nursery_cost_0_to_2
+  elif c_age <= 5:
+    # 文科省「令和5年度子供の学習費調査」：公立幼稚園
+    return 18.4646
+  elif c_age <= 11:
+    # 同調査：公立小学校
+    return 36.6599
+  elif c_age <= 14:
+    # 同調査：公立中学校
+    return 54.2450
+  elif c_age <= 17:
+    # 同調査：公立高等学校（全日制）
+    return 59.6954
   else:
+    # 大学の生活費は get_child_living_expense_addition で別計上する
     if course_type == "ALL_PUBLIC":
-      return 120
+      # JASSO「令和4年度学生生活調査」：公立大学の学費
+      return 58.30
     elif course_type == "PUBLIC_UNIV_RIKEI":
-      return 205
+      # 文科省「令和5年度私立大学学生納付金調査」：理科系
+      return 153.0451 if c_age == 18 else 129.5694
     elif course_type == "PUBLIC_UNIV_BUNKEI":
-      return 172
+      # 同調査：文科系
+      return 119.4841 if c_age == 18 else 97.0973
     else:
-      return 120
+      return 58.30
 
 
-def get_child_living_expense_addition(c_age):
-  if not (0 <= c_age <= 22):
+def get_child_living_expense_addition(c_age, course_type=None):
+  if not (0 <= c_age <= 21):
     return 0
   if c_age <= 3:
     return 15
-  elif c_age <= 12:
+  elif c_age <= 11:
     return 30
-  elif c_age <= 18:
+  elif c_age <= 17:
     return 55
   else:
-    return 40
+    # JASSO「令和4年度学生生活調査」：大学生の年間生活費
+    return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 
 # ------------------------------------------
@@ -444,13 +458,19 @@ for i in range(100 - current_age_h + 1):
     total_child_living_addition = 0
     if child_count >= 1:
       c1_age = age_h - first_birth_age_h
-      total_child_living_addition += get_child_living_expense_addition(c1_age)
+      total_child_living_addition += get_child_living_expense_addition(
+          c1_age, child_courses[1]
+      )
     if child_count >= 2:
       c2_age = age_h - (first_birth_age_h + birth_interval)
-      total_child_living_addition += get_child_living_expense_addition(c2_age)
+      total_child_living_addition += get_child_living_expense_addition(
+          c2_age, child_courses[2]
+      )
     if child_count >= 3:
       c3_age = age_h - (first_birth_age_h + birth_interval * 2)
-      total_child_living_addition += get_child_living_expense_addition(c3_age)
+      total_child_living_addition += get_child_living_expense_addition(
+          c3_age, child_courses[3]
+      )
 
     base_living_with_children = living_expenses + total_child_living_addition
     annual_expense = (
@@ -919,7 +939,7 @@ with tab3:
   ax3.axvline(retirement_age_h, color="#FF869E", linestyle=":")
   ax3.axvspan(retirement_age_h, 100, color="#F1F2F6", alpha=0.5)
   ax3.set_title(
-      "子どもの教育費・生活費",
+      "子どもの教育費",
       fontsize=13,
       fontweight="bold",
       color=COLOR_DARK,
