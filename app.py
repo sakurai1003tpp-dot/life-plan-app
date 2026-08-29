@@ -83,6 +83,10 @@ st.markdown("---")
 # ------------------------------------------
 # サイドバー設定パネル
 # ------------------------------------------
+if st.sidebar.button("🔄 初期設定に戻す", use_container_width=True):
+  st.session_state.clear()
+  st.rerun()
+
 st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
 current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
 current_age_w = st.sidebar.slider("妻の現在の年齢（歳）", 20, 60, 30)
