@@ -2,15 +2,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-# グラフを高解像度・文字化け防止設定
+# グラフを高解像度・文字化け防止設定（Linux対応フォント優先）
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 300
 plt.rcParams['font.sans-serif'] = [
+    'IPAexGothic',
+    'TakaoGothic',
+    'VL Gothic',
     'Meiryo',
     'Yu Gothic',
-    'IPAexGothic',
-    'Takao',
-    'MS Gothic',
     'DejaVu Sans',
 ]
 plt.rcParams['axes.unicode_minus'] = False  # マイナス記号の文字化け防止
@@ -47,7 +47,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 知的で洗練されたメインタイトル
+# 知적で洗練されたメインタイトル
 st.markdown(
     """
     <div style="margin-bottom: 20px;">
@@ -90,29 +90,29 @@ course_labels = {
     'PUBLIC_UNIV_BUNKEI': '高校まで公立・大学は私立文系',
 }
 if child_count >= 1:
-  c1_choice = st.sidebar.selectbox(
-      '第1子の進路',
-      list(course_labels.keys()),
-      format_func=lambda x: course_labels[x],
-      index=0,
-  )
-  child_courses[1] = c1_choice
+    c1_choice = st.sidebar.selectbox(
+        '第1子の進路',
+        list(course_labels.keys()),
+        format_func=lambda x: course_labels[x],
+        index=0,
+    )
+    child_courses[1] = c1_choice
 if child_count >= 2:
-  c2_choice = st.sidebar.selectbox(
-      '第2子の進路',
-      list(course_labels.keys()),
-      format_func=lambda x: course_labels[x],
-      index=1,
-  )
-  child_courses[2] = c2_choice
+    c2_choice = st.sidebar.selectbox(
+        '第2子の進路',
+        list(course_labels.keys()),
+        format_func=lambda x: course_labels[x],
+        index=1,
+    )
+    child_courses[2] = c2_choice
 if child_count >= 3:
-  c3_choice = st.sidebar.selectbox(
-      '第3子の進路',
-      list(course_labels.keys()),
-      format_func=lambda x: course_labels[x],
-      index=2,
-  )
-  child_courses[3] = c3_choice
+    c3_choice = st.sidebar.selectbox(
+        '第3子の進路',
+        list(course_labels.keys()),
+        format_func=lambda x: course_labels[x],
+        index=2,
+    )
+    child_courses[3] = c3_choice
 
 st.sidebar.header('💰 収入・働き方設定')
 gross_income_h_start = st.sidebar.number_input(
@@ -197,63 +197,63 @@ total_annual_car_cost = car_maintenance_cost + annual_car_depreciation
 
 birth_ages_h, birth_ages_w = [], []
 if child_count > 0:
-  for n in range(child_count):
-    b_h = first_birth_age_h + (n * birth_interval)
-    birth_ages_h.append(b_h)
-    birth_ages_w.append(current_age_w + (b_h - current_age_h))
+    for n in range(child_count):
+        b_h = first_birth_age_h + (n * birth_interval)
+        birth_ages_h.append(b_h)
+        birth_ages_w.append(current_age_w + (b_h - current_age_h))
 
 maternity_leave_years_w = []
 for b_w in birth_ages_w:
-  for y in range(maternity_leave_per_child):
-    maternity_leave_years_w.append(b_w + y)
+    for y in range(maternity_leave_per_child):
+        maternity_leave_years_w.append(b_w + y)
 maternity_leave_years_w = sorted(list(set(maternity_leave_years_w)))
 
 reduced_income_years_w = []
 for b_w in birth_ages_w:
-  start_y = b_w + maternity_leave_per_child
-  for y in range(child_care_reduction_years):
-    reduced_income_years_w.append(start_y + y)
+    start_y = b_w + maternity_leave_per_child
+    for y in range(child_care_reduction_years):
+        reduced_income_years_w.append(start_y + y)
 reduced_income_years_w = sorted(list(set(reduced_income_years_w)))
 
 
 def calculate_husband_base_gross_income(age):
-  if age < 29 or age >= retirement_age_h:
-    return 0
-  elif age <= 41:
-    return 532.72 + (age - 29) * ((1100.0 - 532.72) / 12)
-  else:
-    peak_target_income = 1400.0
-    start_income_at_42 = 1100.0
-    years_span = max(1, retirement_age_h - 42)
-    current_offset = age - 42
-    return start_income_at_42 + current_offset * (
-        (peak_target_income - start_income_at_42) / years_span
-    )
+    if age < 29 or age >= retirement_age_h:
+        return 0
+    elif age <= 41:
+        return 532.72 + (age - 29) * ((1100.0 - 532.72) / 12)
+    else:
+        peak_target_income = 1400.0
+        start_income_at_42 = 1100.0
+        years_span = max(1, retirement_age_h - 42)
+        current_offset = age - 42
+        return start_income_at_42 + current_offset * (
+            (peak_target_income - start_income_at_42) / years_span
+        )
 
 
 def calculate_husband_gross_income(age):
-  base = calculate_husband_base_gross_income(age)
-  if base <= 0:
-    return 0
-  if age < 42:
-    hourly_rate = (base * 10000) / 1920
-    annual_overtime_pay = (
-        hourly_rate * overtime_multiplier * overtime_hours_per_month * 12
-    )
-    return base + (annual_overtime_pay / 10000)
-  else:
-    return base
+    base = calculate_husband_base_gross_income(age)
+    if base <= 0:
+        return 0
+    if age < 42:
+        hourly_rate = (base * 10000) / 1920
+        annual_overtime_pay = (
+            hourly_rate * overtime_multiplier * overtime_hours_per_month * 12
+        )
+        return base + (annual_overtime_pay / 10000)
+    else:
+        return base
 
 
 def estimate_pension_h():
-  return (81.3 + (100 * 0.005481 * 12 * (65 - 22))) * 0.87
+    return (81.3 + (100 * 0.005481 * 12 * (65 - 22))) * 0.87
 
 
 def estimate_pension_w():
-  actual_leave_years = len(maternity_leave_years_w)
-  work_years_w = max(0, (retirement_age_w - 22) - actual_leave_years)
-  base_pension = 81.3 + ((gross_income_w / 12) * 0.005481 * 12 * work_years_w)
-  return base_pension * 1.42 * 0.87
+    actual_leave_years = len(maternity_leave_years_w)
+    work_years_w = max(0, (retirement_age_w - 22) - actual_leave_years)
+    base_pension = 81.3 + ((gross_income_w / 12) * 0.005481 * 12 * work_years_w)
+    return base_pension * 1.42 * 0.87
 
 
 calculated_pension_h = estimate_pension_h()
@@ -261,53 +261,53 @@ calculated_pension_w = estimate_pension_w()
 
 
 def calculate_net_income(gross):
-  if gross <= 0:
-    return 0
-  elif gross <= 300:
-    return gross * 0.85
-  elif gross <= 600:
-    return gross * 0.80
-  elif gross <= 1000:
-    return gross * 0.75
-  else:
-    return gross * 0.70
+    if gross <= 0:
+        return 0
+    elif gross <= 300:
+        return gross * 0.85
+    elif gross <= 600:
+        return gross * 0.80
+    elif gross <= 1000:
+        return gross * 0.75
+    else:
+        return gross * 0.70
 
 
 def get_child_yearly_expense(c_age, course_type):
-  if not (0 <= c_age <= 22):
-    return 0
-  if c_age <= 2:
-    return 30
-  elif c_age <= 6:
-    return 35
-  elif c_age <= 12:
-    return 34
-  elif c_age <= 15:
-    return 54
-  elif c_age <= 18:
-    return 51
-  else:
-    if course_type == 'ALL_PUBLIC':
-      return 120
-    elif course_type == 'PUBLIC_UNIV_RIKEI':
-      return 205
-    elif course_type == 'PUBLIC_UNIV_BUNKEI':
-      return 172
+    if not (0 <= c_age <= 22):
+        return 0
+    if c_age <= 2:
+        return 30
+    elif c_age <= 6:
+        return 35
+    elif c_age <= 12:
+        return 34
+    elif c_age <= 15:
+        return 54
+    elif c_age <= 18:
+        return 51
     else:
-      return 120
+        if course_type == 'ALL_PUBLIC':
+            return 120
+        elif course_type == 'PUBLIC_UNIV_RIKEI':
+            return 205
+        elif course_type == 'PUBLIC_UNIV_BUNKEI':
+            return 172
+        else:
+            return 120
 
 
 def get_child_living_expense_addition(c_age):
-  if not (0 <= c_age <= 22):
-    return 0
-  if c_age <= 3:
-    return 15
-  elif c_age <= 12:
-    return 30
-  elif c_age <= 18:
-    return 55
-  else:
-    return 40
+    if not (0 <= c_age <= 22):
+        return 0
+    if c_age <= 3:
+        return 15
+    elif c_age <= 12:
+        return 30
+    elif c_age <= 18:
+        return 55
+    else:
+        return 40
 
 
 # ------------------------------------------
@@ -337,176 +337,176 @@ sim_investment = current_investment
 sim_stock = current_stock
 
 for i in range(100 - current_age_h + 1):
-  age_h = current_age_h + i
-  age_w = current_age_w + i
+    age_h = current_age_h + i
+    age_w = current_age_w + i
 
-  annual_dividend = 0
-  if i > 0:
-    sim_investment = sim_investment * (1 + annual_return_rate / 100)
-    sim_stock = sim_stock * (1 + stock_return_rate / 100)
-    annual_dividend = (
-        sim_stock * (stock_dividend_yield / 100)
-    ) * 0.79685
+    annual_dividend = 0
+    if i > 0:
+        sim_investment = sim_investment * (1 + annual_return_rate / 100)
+        sim_stock = sim_stock * (1 + stock_return_rate / 100)
+        annual_dividend = (
+            sim_stock * (stock_dividend_yield / 100)
+        ) * 0.79685
 
-  net_h = (
-      calculate_net_income(calculate_husband_gross_income(age_h))
-      if age_h < retirement_age_h
-      else 0
-  )
-
-  if age_w < retirement_age_w:
-    if age_w in maternity_leave_years_w:
-      current_gross_w = 0
-    else:
-      base_w = gross_income_w * ((1 + income_change_rate_w / 100) ** i)
-      if age_w in reduced_income_years_w:
-        base_w *= 1 - child_care_income_reduction_rate
-      current_gross_w = base_w
-    net_w = calculate_net_income(current_gross_w)
-  else:
-    current_gross_w = 0
-    net_w = 0
-
-  extra_retirement_cash = (
-      (retirement_payout_w if age_w == retirement_age_w else 0)
-      + (retirement_payout_h if age_h == retirement_age_h else 0)
-  )
-  current_pension_gross = (
-      (calculated_pension_h if age_h >= pension_start_age_h else 0)
-      + (calculated_pension_w if age_w >= pension_start_age_w else 0)
-  )
-  current_pension_net = (
-      current_pension_gross * 0.85 if current_pension_gross > 0 else 0
-  )
-
-  total_gross = (
-      calculate_husband_gross_income(age_h)
-      + current_gross_w
-      + current_pension_gross
-  )
-  pure_annual_income = net_h + net_w + current_pension_net + annual_dividend
-
-  is_migrated = age_h >= retirement_age_h and age_w >= retirement_age_h
-
-  if not is_migrated:
-    rate_factor_exp = (1 + expense_change_rate / 100) ** i
-    current_housing = housing_expenses_base + (
-        housing_increase_on_child
-        if (child_count > 0 and age_h >= first_birth_age_h)
+    net_h = (
+        calculate_net_income(calculate_husband_gross_income(age_h))
+        if age_h < retirement_age_h
         else 0
     )
 
-    total_child_living_addition = 0
-    if child_count >= 1:
-      c1_age = age_h - first_birth_age_h
-      total_child_living_addition += get_child_living_expense_addition(c1_age)
-    if child_count >= 2:
-      c2_age = age_h - (first_birth_age_h + birth_interval)
-      total_child_living_addition += get_child_living_expense_addition(c2_age)
-    if child_count >= 3:
-      c3_age = age_h - (first_birth_age_h + birth_interval * 2)
-      total_child_living_addition += get_child_living_expense_addition(c3_age)
-
-    base_living_with_children = living_expenses + total_child_living_addition
-    annual_expense = (
-        base_living_with_children
-        + current_housing
-        + annual_travel_cost
-        + general_medical_cost
-        + annual_social_cost
-    ) * rate_factor_exp
-  else:
-    retirement_start_i = retirement_age_h - current_age_h
-    base_expense_fixed = (
-        (living_expenses * migration_living_expense_ratio)
-        + migration_housing_expenses
-        + total_annual_car_cost
-        + annual_travel_cost
-        + annual_social_cost
-    ) * ((1 + expense_change_rate / 100) ** retirement_start_i)
-    annual_expense = (
-        base_expense_fixed * (0.90 if age_h >= 75 else 1.0)
-    ) + (general_medical_cost * migration_medical_cost_multiplier)
-
-  extra_one_time_expense = wedding_cost if i == 1 else 0
-
-  c1_exp, c2_exp, c3_exp = 0, 0, 0
-  if child_count >= 1:
-    c1_age = age_h - first_birth_age_h
-    c1_exp = get_child_yearly_expense(c1_age, child_courses[1])
-  if child_count >= 2:
-    c2_age = age_h - (first_birth_age_h + birth_interval)
-    c2_exp = get_child_yearly_expense(c2_age, child_courses[2])
-  if child_count >= 3:
-    c3_age = age_h - (first_birth_age_h + birth_interval * 2)
-    c3_exp = get_child_yearly_expense(c3_age, child_courses[3])
-
-  total_child_expense = c1_exp + c2_exp + c3_exp
-  pure_total_expense = (
-      annual_expense + total_child_expense + extra_one_time_expense
-  )
-  pure_annual_balance = pure_annual_income - pure_total_expense
-
-  sim_cash += pure_annual_balance + extra_retirement_cash
-
-  if age_h == retirement_age_h:
-    sim_cash += sim_stock
-    sim_stock = 0
-    needed = regional_house_cost - sim_cash
-    if needed > 0:
-      sale = min(needed, sim_investment)
-      sim_investment -= sale
-      sim_cash += sale
-    sim_cash -= regional_house_cost
-
-  if sim_cash < min_cash_reserve:
-    shortfall = min_cash_reserve - sim_cash
-    if sim_stock >= shortfall:
-      sim_stock -= shortfall
-      sim_cash += shortfall
+    if age_w < retirement_age_w:
+        if age_w in maternity_leave_years_w:
+            current_gross_w = 0
+        else:
+            base_w = gross_income_w * ((1 + income_change_rate_w / 100) ** i)
+            if age_w in reduced_income_years_w:
+                base_w *= 1 - child_care_income_reduction_rate
+            current_gross_w = base_w
+        net_w = calculate_net_income(current_gross_w)
     else:
-      shortfall -= sim_stock
-      sim_cash += sim_stock
-      sim_stock = 0
-      if sim_investment >= shortfall:
-        sim_investment -= shortfall
-        sim_cash += shortfall
-      else:
-        sim_cash += sim_investment
-        sim_investment = 0
-  elif age_h < investment_stop_age_h and sim_cash > max_cash_limit:
-    excess = sim_cash - max_cash_limit
-    sim_cash = max_cash_limit
-    sim_investment += excess
+        current_gross_w = 0
+        net_w = 0
 
-  total_wealth = sim_cash + sim_investment + sim_stock
-  c_ratio = (sim_cash / total_wealth) * 100 if total_wealth > 0 else 100
-  i_ratio = (sim_investment / total_wealth) * 100 if total_wealth > 0 else 0
-  s_ratio = (sim_stock / total_wealth) * 100 if total_wealth > 0 else 0
+    extra_retirement_cash = (
+        (retirement_payout_w if age_w == retirement_age_w else 0)
+        + (retirement_payout_h if age_h == retirement_age_h else 0)
+    )
+    current_pension_gross = (
+        (calculated_pension_h if age_h >= pension_start_age_h else 0)
+        + (calculated_pension_w if age_w >= pension_start_age_w else 0)
+    )
+    current_pension_net = (
+        current_pension_gross * 0.85 if current_pension_gross > 0 else 0
+    )
 
-  age_history.append(age_h)
-  total_wealth_history.append(total_wealth)
-  cash_history.append(sim_cash)
-  investment_history.append(sim_investment)
-  stock_history.append(sim_stock)
-  net_income_history.append(pure_annual_income)
-  total_expense_history.append(pure_total_expense)
-  annual_balance_history.append(pure_annual_balance)
-  child1_history.append(c1_exp)
-  child2_history.append(c2_exp)
-  child3_history.append(c3_exp)
-  total_child_expense_history.append(total_child_expense)
-  cash_ratio_history.append(c_ratio)
-  investment_ratio_history.append(i_ratio)
-  stock_ratio_history.append(s_ratio)
-  husband_gross_history.append(calculate_husband_gross_income(age_h))
-  wife_gross_history.append(current_gross_w)
-  pension_gross_history.append(current_pension_gross)
-  household_gross_history.append(total_gross)
-  husband_net_history.append(net_h)
-  wife_net_history.append(net_w)
-  pension_net_history.append(current_pension_net)
-  household_net_history.append(pure_annual_income)
+    total_gross = (
+        calculate_husband_gross_income(age_h)
+        + current_gross_w
+        + current_pension_gross
+    )
+    pure_annual_income = net_h + net_w + current_pension_net + annual_dividend
+
+    is_migrated = age_h >= retirement_age_h and age_w >= retirement_age_h
+
+    if not is_migrated:
+        rate_factor_exp = (1 + expense_change_rate / 100) ** i
+        current_housing = housing_expenses_base + (
+            housing_increase_on_child
+            if (child_count > 0 and age_h >= first_birth_age_h)
+            else 0
+        )
+
+        total_child_living_addition = 0
+        if child_count >= 1:
+            c1_age = age_h - first_birth_age_h
+            total_child_living_addition += get_child_living_expense_addition(c1_age)
+        if child_count >= 2:
+            c2_age = age_h - (first_birth_age_h + birth_interval)
+            total_child_living_addition += get_child_living_expense_addition(c2_age)
+        if child_count >= 3:
+            c3_age = age_h - (first_birth_age_h + birth_interval * 2)
+            total_child_living_addition += get_child_living_expense_addition(c3_age)
+
+        base_living_with_children = living_expenses + total_child_living_addition
+        annual_expense = (
+            base_living_with_children
+            + current_housing
+            + annual_travel_cost
+            + general_medical_cost
+            + annual_social_cost
+        ) * rate_factor_exp
+    else:
+        retirement_start_i = retirement_age_h - current_age_h
+        base_expense_fixed = (
+            (living_expenses * migration_living_expense_ratio)
+            + migration_housing_expenses
+            + total_annual_car_cost
+            + annual_travel_cost
+            + annual_social_cost
+        ) * ((1 + expense_change_rate / 100) ** retirement_start_i)
+        annual_expense = (
+            base_expense_fixed * (0.90 if age_h >= 75 else 1.0)
+        ) + (general_medical_cost * migration_medical_cost_multiplier)
+
+    extra_one_time_expense = wedding_cost if i == 1 else 0
+
+    c1_exp, c2_exp, c3_exp = 0, 0, 0
+    if child_count >= 1:
+        c1_age = age_h - first_birth_age_h
+        c1_exp = get_child_yearly_expense(c1_age, child_courses[1])
+    if child_count >= 2:
+        c2_age = age_h - (first_birth_age_h + birth_interval)
+        c2_exp = get_child_yearly_expense(c2_age, child_courses[2])
+    if child_count >= 3:
+        c3_age = age_h - (first_birth_age_h + birth_interval * 2)
+        c3_exp = get_child_yearly_expense(c3_age, child_courses[3])
+
+    total_child_expense = c1_exp + c2_exp + c3_exp
+    pure_total_expense = (
+        annual_expense + total_child_expense + extra_one_time_expense
+    )
+    pure_annual_balance = pure_annual_income - pure_total_expense
+
+    sim_cash += pure_annual_balance + extra_retirement_cash
+
+    if age_h == retirement_age_h:
+        sim_cash += sim_stock
+        sim_stock = 0
+        needed = regional_house_cost - sim_cash
+        if needed > 0:
+            sale = min(needed, sim_investment)
+            sim_investment -= sale
+            sim_cash += sale
+        sim_cash -= regional_house_cost
+
+    if sim_cash < min_cash_reserve:
+        shortfall = min_cash_reserve - sim_cash
+        if sim_stock >= shortfall:
+            sim_stock -= shortfall
+            sim_cash += shortfall
+        else:
+            shortfall -= sim_stock
+            sim_cash += sim_stock
+            sim_stock = 0
+            if sim_investment >= shortfall:
+                sim_investment -= shortfall
+                sim_cash += shortfall
+            else:
+                sim_cash += sim_investment
+                sim_investment = 0
+    elif age_h < investment_stop_age_h and sim_cash > max_cash_limit:
+        excess = sim_cash - max_cash_limit
+        sim_cash = max_cash_limit
+        sim_investment += excess
+
+    total_wealth = sim_cash + sim_investment + sim_stock
+    c_ratio = (sim_cash / total_wealth) * 100 if total_wealth > 0 else 100
+    i_ratio = (sim_investment / total_wealth) * 100 if total_wealth > 0 else 0
+    s_ratio = (sim_stock / total_wealth) * 100 if total_wealth > 0 else 0
+
+    age_history.append(age_h)
+    total_wealth_history.append(total_wealth)
+    cash_history.append(sim_cash)
+    investment_history.append(sim_investment)
+    stock_history.append(sim_stock)
+    net_income_history.append(pure_annual_income)
+    total_expense_history.append(pure_total_expense)
+    annual_balance_history.append(pure_annual_balance)
+    child1_history.append(c1_exp)
+    child2_history.append(c2_exp)
+    child3_history.append(c3_exp)
+    total_child_expense_history.append(total_child_expense)
+    cash_ratio_history.append(c_ratio)
+    investment_ratio_history.append(i_ratio)
+    stock_ratio_history.append(s_ratio)
+    husband_gross_history.append(calculate_husband_gross_income(age_h))
+    wife_gross_history.append(current_gross_w)
+    pension_gross_history.append(current_pension_gross)
+    household_gross_history.append(total_gross)
+    husband_net_history.append(net_h)
+    wife_net_history.append(net_w)
+    pension_net_history.append(current_pension_net)
+    household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
 # KPIメトリクスカードの表示
@@ -516,62 +516,62 @@ peak_wealth = max(total_wealth_history)
 
 target_age_80 = current_age_h + (80 - current_age_h)
 if target_age_80 in age_history:
-  idx_80 = age_history.index(target_age_80)
-  wealth_at_80 = total_wealth_history[idx_80]
+    idx_80 = age_history.index(target_age_80)
+    wealth_at_80 = total_wealth_history[idx_80]
 else:
-  wealth_at_80 = total_wealth_history[-1]
+    wealth_at_80 = total_wealth_history[-1]
 
 if child_count == 0:
-  child_info_str = '子供 0人'
+    child_info_str = '子供 0人'
 else:
-  courses_summary = []
-  for n in range(1, child_count + 1):
-    if n in child_courses:
-      courses_summary.append(f'第{n}: {course_labels[child_courses[n]]}')
-  child_info_str = f'子供 {child_count}人 (' + ', '.join(courses_summary) + ')'
+    courses_summary = []
+    for n in range(1, child_count + 1):
+        if n in child_courses:
+            courses_summary.append(f'第{n}: {course_labels[child_courses[n]]}')
+    child_info_str = f'子供 {child_count}人 (' + ', '.join(courses_summary) + ')'
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
         <div class="metric-card">
             <div class="metric-title">現在の総資産</div>
             <div class="metric-value">{initial_total_wealth:,.0f} 万円</div>
         </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 with col2:
-  peak_age = age_history[total_wealth_history.index(peak_wealth)]
-  st.markdown(
-      f"""
+    peak_age = age_history[total_wealth_history.index(peak_wealth)]
+    st.markdown(
+        f"""
         <div class="metric-card">
             <div class="metric-title">資産ピーク時（年齢: {peak_age}歳）</div>
             <div class="metric-value">{peak_wealth:,.0f} 万円</div>
         </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 with col3:
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
         <div class="metric-card">
             <div class="metric-title">80歳時点の残高</div>
             <div class="metric-value">{wealth_at_80:,.0f} 万円</div>
         </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 with col4:
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
         <div class="metric-card">
             <div class="metric-title">家族・進路設定</div>
             <div class="metric-value" style="font-size: 1.0rem; padding-top: 5px;">{child_info_str}</div>
         </div>
     """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
 
 st.markdown('<br>', unsafe_allow_html=True)
 
@@ -583,246 +583,246 @@ tab1, tab2, tab3, tab4 = st.tabs(
 )
 
 with tab1:
-  fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
-  ax1.plot(
-      age_history,
-      total_wealth_history,
-      label='総資産額',
-      color='#0F4C81',
-      linewidth=2.5,
-  )
-  ax1.plot(
-      age_history,
-      cash_history,
-      label=f'現預金（上限{max_cash_limit}万円で固定）',
-      color='#2E7D32',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax1.plot(
-      age_history,
-      investment_history,
-      label=f'投資信託 (利回り{annual_return_rate}%)',
-      color='#E67E22',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax1.plot(
-      age_history,
-      stock_history,
-      label='株式',
-      color='#8E44AD',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax1.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
-  ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
-  ax1.set_ylabel('金額 (万円)', fontsize=10)
-  ax1.grid(True, linestyle='--', alpha=0.5)
-  ax1.legend(loc='upper left')
+    fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    ax1.plot(
+        age_history,
+        total_wealth_history,
+        label='総資産額',
+        color='#0F4C81',
+        linewidth=2.5,
+    )
+    ax1.plot(
+        age_history,
+        cash_history,
+        label=f'現預金（上限{max_cash_limit}万円で固定）',
+        color='#2E7D32',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax1.plot(
+        age_history,
+        investment_history,
+        label=f'投資信託 (利回り{annual_return_rate}%)',
+        color='#E67E22',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax1.plot(
+        age_history,
+        stock_history,
+        label='株式',
+        color='#8E44AD',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax1.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
+    ax1.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax1.set_title('1. 資産残高の生涯シミュレーション', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('金額 (万円)', fontsize=10)
+    ax1.grid(True, linestyle='--', alpha=0.5)
+    ax1.legend(loc='upper left')
 
-  ax2.plot(
-      age_history,
-      net_income_history,
-      label='世帯手取り収入（配当金込）',
-      color='#2980B9',
-      linewidth=1.8,
-  )
-  ax2.plot(
-      age_history,
-      total_expense_history,
-      label='年間総支出',
-      color='#C0392B',
-      linewidth=1.8,
-  )
-  ax2.plot(
-      age_history,
-      annual_balance_history,
-      label='年間収支',
-      color='#333333',
-      linewidth=1.5,
-      linestyle='-.',
-  )
-  ax2.fill_between(
-      age_history,
-      annual_balance_history,
-      0,
-      where=[b >= 0 for b in annual_balance_history],
-      color='#27AE60',
-      alpha=0.3,
-      interpolate=True,
-  )
-  ax2.fill_between(
-      age_history,
-      annual_balance_history,
-      0,
-      where=[b < 0 for b in annual_balance_history],
-      color='#E74C3C',
-      alpha=0.3,
-      interpolate=True,
-  )
-  ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
-  ax2.axvline(retirement_age_h, color='red', linestyle=':')
-  ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax2.set_title(
-      '2. 年間手取り収入・年間支出・年間収支の推移',
-      fontsize=12,
-      fontweight='bold',
-  )
-  ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
-  ax2.set_ylabel('金額 (万円)', fontsize=10)
-  ax2.grid(True, linestyle='--', alpha=0.5)
-  ax2.legend(loc='upper left')
-  plt.tight_layout()
-  st.pyplot(fig1)
+    ax2.plot(
+        age_history,
+        net_income_history,
+        label='世帯手取り収入（配当金込）',
+        color='#2980B9',
+        linewidth=1.8,
+    )
+    ax2.plot(
+        age_history,
+        total_expense_history,
+        label='年間総支出',
+        color='#C0392B',
+        linewidth=1.8,
+    )
+    ax2.plot(
+        age_history,
+        annual_balance_history,
+        label='年間収支',
+        color='#333333',
+        linewidth=1.5,
+        linestyle='-.',
+    )
+    ax2.fill_between(
+        age_history,
+        annual_balance_history,
+        0,
+        where=[b >= 0 for b in annual_balance_history],
+        color='#27AE60',
+        alpha=0.3,
+        interpolate=True,
+    )
+    ax2.fill_between(
+        age_history,
+        annual_balance_history,
+        0,
+        where=[b < 0 for b in annual_balance_history],
+        color='#E74C3C',
+        alpha=0.3,
+        interpolate=True,
+    )
+    ax2.axhline(0, color='gray', linestyle='--', alpha=0.7)
+    ax2.axvline(retirement_age_h, color='red', linestyle=':')
+    ax2.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax2.set_title(
+        '2. 年間手取り収入・年間支出・年間収支の推移',
+        fontsize=12,
+        fontweight='bold',
+    )
+    ax2.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax2.set_ylabel('金額 (万円)', fontsize=10)
+    ax2.grid(True, linestyle='--', alpha=0.5)
+    ax2.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig1)
 
 with tab2:
-  fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
-  ax_g.plot(
-      age_history,
-      household_gross_history,
-      label='世帯合計 額面収入（給与＋年金）',
-      color='#2C3E50',
-      linewidth=2.5,
-  )
-  ax_g.plot(
-      age_history,
-      husband_gross_history,
-      label='夫 額面給与収入',
-      color='#2980B9',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax_g.plot(
-      age_history,
-      wife_gross_history,
-      label='妻 額面給与収入',
-      color='#E67E22',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax_g.plot(
-      age_history,
-      pension_gross_history,
-      label='公的年金受給額（額面合計）',
-      color='#8E44AD',
-      linestyle=':',
-      linewidth=2.0,
-  )
-  ax_g.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
-  ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
-  ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
-  ax_g.grid(True, linestyle='--', alpha=0.5)
-  ax_g.legend(loc='upper right')
+    fig_income, (ax_g, ax_n) = plt.subplots(2, 1, figsize=(10, 11), sharex=True)
+    ax_g.plot(
+        age_history,
+        household_gross_history,
+        label='世帯合計 額面収入（給与＋年金）',
+        color='#2C3E50',
+        linewidth=2.5,
+    )
+    ax_g.plot(
+        age_history,
+        husband_gross_history,
+        label='夫 額面給与収入',
+        color='#2980B9',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax_g.plot(
+        age_history,
+        wife_gross_history,
+        label='妻 額面給与収入',
+        color='#E67E22',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax_g.plot(
+        age_history,
+        pension_gross_history,
+        label='公的年金受給額（額面合計）',
+        color='#8E44AD',
+        linestyle=':',
+        linewidth=2.0,
+    )
+    ax_g.axvline(retirement_age_h, color='red', linestyle=':', label='夫定年・移住')
+    ax_g.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax_g.set_title('3. 額面収入の生涯推移', fontsize=12, fontweight='bold')
+    ax_g.set_ylabel('額面金額 (万円)', fontsize=10)
+    ax_g.grid(True, linestyle='--', alpha=0.5)
+    ax_g.legend(loc='upper right')
 
-  ax_n.plot(
-      age_history,
-      household_net_history,
-      label='世帯合計 手取り収入',
-      color='#27AE60',
-      linewidth=2.5,
-  )
-  ax_n.plot(
-      age_history,
-      husband_net_history,
-      label='夫 手取り給与',
-      color='#3498DB',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax_n.plot(
-      age_history,
-      wife_net_history,
-      label='妻 手取り給与',
-      color='#F39C12',
-      linestyle='--',
-      linewidth=1.8,
-  )
-  ax_n.plot(
-      age_history,
-      pension_net_history,
-      label='公的年金（手取り換算）',
-      color='#9B59B6',
-      linestyle=':',
-      linewidth=2.0,
-  )
-  ax_n.axvline(retirement_age_h, color='red', linestyle=':')
-  ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
-  ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
-  ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
-  ax_n.grid(True, linestyle='--', alpha=0.5)
-  ax_n.legend(loc='upper right')
-  plt.tight_layout()
-  st.pyplot(fig_income)
+    ax_n.plot(
+        age_history,
+        household_net_history,
+        label='世帯合計 手取り収入',
+        color='#27AE60',
+        linewidth=2.5,
+    )
+    ax_n.plot(
+        age_history,
+        husband_net_history,
+        label='夫 手取り給与',
+        color='#3498DB',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax_n.plot(
+        age_history,
+        wife_net_history,
+        label='妻 手取り給与',
+        color='#F39C12',
+        linestyle='--',
+        linewidth=1.8,
+    )
+    ax_n.plot(
+        age_history,
+        pension_net_history,
+        label='公的年金（手取り換算）',
+        color='#9B59B6',
+        linestyle=':',
+        linewidth=2.0,
+    )
+    ax_n.axvline(retirement_age_h, color='red', linestyle=':')
+    ax_n.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax_n.set_title('4. 手取り収入の生涯推移', fontsize=12, fontweight='bold')
+    ax_n.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax_n.set_ylabel('手取り金額 (万円)', fontsize=10)
+    ax_n.grid(True, linestyle='--', alpha=0.5)
+    ax_n.legend(loc='upper right')
+    plt.tight_layout()
+    st.pyplot(fig_income)
 
 with tab3:
-  fig_child, ax3 = plt.subplots(figsize=(10, 6))
-  if child_count >= 1:
-    ax3.plot(
-        age_history,
-        child1_history,
-        label=f'第1子 ({course_labels[child_courses[1]]})',
-        color='#3498DB',
-        linewidth=2,
-    )
-  if child_count >= 2:
-    ax3.plot(
-        age_history,
-        child2_history,
-        label=f'第2子 ({course_labels[child_courses[2]]})',
-        color='#9B59B6',
-        linewidth=2,
-    )
-  if child_count >= 3:
-    ax3.plot(
-        age_history,
-        child3_history,
-        label=f'第3子 ({course_labels[child_courses[3]]})',
-        color='#2ECC71',
-        linewidth=2,
-    )
+    fig_child, ax3 = plt.subplots(figsize=(10, 6))
+    if child_count >= 1:
+        ax3.plot(
+            age_history,
+            child1_history,
+            label=f'第1子 ({course_labels[child_courses[1]]})',
+            color='#3498DB',
+            linewidth=2,
+        )
+    if child_count >= 2:
+        ax3.plot(
+            age_history,
+            child2_history,
+            label=f'第2子 ({course_labels[child_courses[2]]})',
+            color='#9B59B6',
+            linewidth=2,
+        )
+    if child_count >= 3:
+        ax3.plot(
+            age_history,
+            child3_history,
+            label=f'第3子 ({course_labels[child_courses[3]]})',
+            color='#2ECC71',
+            linewidth=2,
+        )
 
-  ax3.plot(
-      age_history,
-      total_child_expense_history,
-      label='総子ども費用',
-      color='#E74C3C',
-      linewidth=2.5,
-      linestyle=':',
-  )
-  ax3.axvline(retirement_age_h, color='red', linestyle=':')
-  ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax3.set_title('子育て費用の推移', fontsize=12, fontweight='bold')
-  ax3.set_xlabel('夫の年齢 (歳)', fontsize=10)
-  ax3.set_ylabel('金額 (万円)', fontsize=10)
-  ax3.grid(True, linestyle='--', alpha=0.5)
-  ax3.legend(loc='upper left')
-  plt.tight_layout()
-  st.pyplot(fig_child)
+    ax3.plot(
+        age_history,
+        total_child_expense_history,
+        label='総子ども費用',
+        color='#E74C3C',
+        linewidth=2.5,
+        linestyle=':',
+    )
+    ax3.axvline(retirement_age_h, color='red', linestyle=':')
+    ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax3.set_title('子育て費用の推移', fontsize=12, fontweight='bold')
+    ax3.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax3.set_ylabel('金額 (万円)', fontsize=10)
+    ax3.grid(True, linestyle='--', alpha=0.5)
+    ax3.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig_child)
 
 with tab4:
-  fig_port, ax4 = plt.subplots(figsize=(10, 6))
-  ax4.stackplot(
-      age_history,
-      cash_ratio_history,
-      investment_ratio_history,
-      stock_ratio_history,
-      labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'],
-      colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'],
-  )
-  ax4.axvline(retirement_age_h, color='red', linestyle=':')
-  ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
-  ax4.set_title('資産構成比率の推移', fontsize=12, fontweight='bold')
-  ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
-  ax4.set_ylabel('比率 (%)', fontsize=10)
-  ax4.set_ylim(0, 100)
-  ax4.grid(True, linestyle='--', alpha=0.5)
-  ax4.legend(loc='upper left')
-  plt.tight_layout()
-  st.pyplot(fig_port)
+    fig_port, ax4 = plt.subplots(figsize=(10, 6))
+    ax4.stackplot(
+        age_history,
+        cash_ratio_history,
+        investment_ratio_history,
+        stock_ratio_history,
+        labels=['現金比率(%)', '投資信託比率(%)', '株式比率(%)'],
+        colors=['#A9DFBF', '#F5CBA7', '#D2B4DE'],
+    )
+    ax4.axvline(retirement_age_h, color='red', linestyle=':')
+    ax4.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
+    ax4.set_title('資産構成比率の推移', fontsize=12, fontweight='bold')
+    ax4.set_xlabel('夫の年齢 (歳)', fontsize=10)
+    ax4.set_ylabel('比率 (%)', fontsize=10)
+    ax4.set_ylim(0, 100)
+    ax4.grid(True, linestyle='--', alpha=0.5)
+    ax4.legend(loc='upper left')
+    plt.tight_layout()
+    st.pyplot(fig_port)
 
 # CSVエクスポート機能
 st.markdown('---')
