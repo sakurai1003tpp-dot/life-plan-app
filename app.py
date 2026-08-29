@@ -1,6 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import matplotlib_fontja  # ←これを入れるだけで日本語化されます
+import matplotlib_fontja
 
 # グラフを高解像度（鮮明）に設定
 plt.rcParams['figure.dpi'] = 150
@@ -20,6 +20,27 @@ retirement_age_h = st.sidebar.slider("夫の退職年齢（歳）", 50, 75, 65)
 retirement_age_w = st.sidebar.slider("妻の退職年齢（歳）", 50, 75, 55)
 pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
 pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
+
+st.sidebar.header("👶 子ども設定")
+child_count = st.sidebar.selectbox("子供の人数", [0, 1, 2, 3], index=1)
+first_birth_age_h = st.sidebar.slider("第1子誕生時の夫の年齢", 22, 50, 31)
+birth_interval = st.sidebar.slider("きょうだいの年齢差（年）", 1, 5, 3)
+
+child_courses = {}
+course_labels = {
+    'PUBLIC_UNIV_RIKEI': '国公立・理系',
+    'PUBLIC_UNIV_PRIVATE': '私立文系・理系',
+    'ALL_PUBLIC': '全公立'
+}
+if child_count >= 1:
+    c1_choice = st.sidebar.selectbox("第1子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0)
+    child_courses[1] = c1_choice
+if child_count >= 2:
+    c2_choice = st.sidebar.selectbox("第2子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=1)
+    child_courses[2] = c2_choice
+if child_count >= 3:
+    c3_choice = st.sidebar.selectbox("第3子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=2)
+    child_courses[3] = c3_choice
 
 st.sidebar.header("💰 収入・働き方設定")
 gross_income_h_start = st.sidebar.number_input("夫の現在年収 (万円)", 0, 5000, 720, step=10)
@@ -60,20 +81,13 @@ housing_increase_on_child = 60
 wedding_cost = 200              
 migration_living_expense_ratio = 0.80  
 migration_medical_cost_multiplier = 4.0 
+maternity_leave_per_child = 3
 
 car_maintenance_cost = 40      
 car_purchase_price = 300       
 car_replacement_cycle = 10     
 annual_car_depreciation = car_purchase_price / car_replacement_cycle
 total_annual_car_cost = car_maintenance_cost + annual_car_depreciation
-
-child_count = 1                
-first_birth_age_h = 31         
-birth_interval = 3             
-maternity_leave_per_child = 3  
-
-child_courses = {1: 'PUBLIC_UNIV_RIKEI', 2: 'PUBLIC_UNIV_PRIVATE', 3: 'ALL_PUBLIC'}
-course_labels = {'PUBLIC_UNIV_RIKEI': '国公立・理系', 'PUBLIC_UNIV_PRIVATE': '私立文系・理系', 'ALL_PUBLIC': '全公立'}
 
 # --- 出産・育休期間の計算 ---
 birth_ages_h, birth_ages_w = [], []
@@ -135,13 +149,32 @@ def calculate_net_income(gross):
     elif gross <= 1000: return gross * 0.75
     else: return gross * 0.70
 
+def get_child_yearly_expense(c_age, course_type):
+    if not (0 <= c_age <= 22):
+        return 0
+    if c_age <= 6:
+        return 60
+    elif c_age <= 12:
+        return 90
+    elif c_age <= 15:
+        return 110
+    elif c_age <= 18:
+        return 100
+    else:
+        if course_type == 'PUBLIC_UNIV_RIKEI':
+            return 260
+        elif course_type == 'PUBLIC_UNIV_PRIVATE':
+            return 220
+        else:
+            return 180
+
 # --- シミュレーション用リスト ---
 age_history, total_wealth_history, cash_history, investment_history, stock_history = [], [], [], [], []
 net_income_history, total_expense_history, annual_balance_history = [], [], []
 child1_history, child2_history, child3_history, total_child_expense_history = [], [], [], []
 cash_ratio_history, investment_ratio_history, stock_ratio_history = [], [], []
 husband_gross_history, wife_gross_history, pension_gross_history, household_gross_history = [], [], [], []
-husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], [], []
+husband_net_history, wife_net_history, pension_net_history, household_net_history = [], [], []
 
 # --- ループ処理 ---
 for i in range(100 - current_age_h + 1):
@@ -187,15 +220,17 @@ for i in range(100 - current_age_h + 1):
         annual_expense = (base_expense_fixed * (0.90 if age_h >= 75 else 1.0)) + (general_medical_cost * migration_medical_cost_multiplier)
     
     extra_one_time_expense = wedding_cost if i == 1 else 0
+    
     c1_exp, c2_exp, c3_exp = 0, 0, 0
     if child_count >= 1:
         c1_age = age_h - first_birth_age_h
-        if 0 <= c1_age <= 22:
-            c1_exp = 60 if c1_age <= 6 else (90 if c1_age <= 12 else (110 if c1_age <= 15 else (100 if c1_age <= 18 else 260)))
+        c1_exp = get_child_yearly_expense(c1_age, child_courses[1])
     if child_count >= 2:
         c2_age = age_h - (first_birth_age_h + birth_interval)
-        if 0 <= c2_age <= 22:
-            c2_exp = 60 if c2_age <= 6 else (90 if c2_age <= 12 else (110 if c2_age <= 15 else (100 if c2_age <= 18 else 220)))
+        c2_exp = get_child_yearly_expense(c2_age, child_courses[2])
+    if child_count >= 3:
+        c3_age = age_h - (first_birth_age_h + birth_interval * 2)
+        c3_exp = get_child_yearly_expense(c3_age, child_courses[3])
 
     total_child_expense = c1_exp + c2_exp + c3_exp
     pure_total_expense = annual_expense + total_child_expense + extra_one_time_expense
@@ -263,7 +298,7 @@ for i in range(100 - current_age_h + 1):
     household_net_history.append(pure_annual_income)
 
 # ------------------------------------------
-# グラフ描画（日本語対応版）
+# グラフ描画
 # ------------------------------------------
 fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
 ax1.plot(age_history, total_wealth_history, label='総資産額', color='#0F4C81', linewidth=2.5)
@@ -320,8 +355,13 @@ ax_n.legend(loc='upper right')
 plt.tight_layout()
 
 fig2, (ax3, ax4) = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-ax3.plot(age_history, child1_history, label='第1子費用', color='#3498DB', linewidth=2)
-if child_count >= 2: ax3.plot(age_history, child2_history, label='第2子費用', color='#9B59B6', linewidth=2)
+if child_count >= 1:
+    ax3.plot(age_history, child1_history, label=f'第1子 ({course_labels[child_courses[1]]})', color='#3498DB', linewidth=2)
+if child_count >= 2:
+    ax3.plot(age_history, child2_history, label=f'第2子 ({course_labels[child_courses[2]]})', color='#9B59B6', linewidth=2)
+if child_count >= 3:
+    ax3.plot(age_history, child3_history, label=f'第3子 ({course_labels[child_courses[3]]})', color='#2ECC71', linewidth=2)
+
 ax3.plot(age_history, total_child_expense_history, label='総子ども費用', color='#E74C3C', linewidth=2.5, linestyle=':')
 ax3.axvline(retirement_age_h, color='red', linestyle=':')
 ax3.axvspan(retirement_age_h, 100, color='gray', alpha=0.15)
