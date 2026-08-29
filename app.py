@@ -102,10 +102,6 @@ pension_at_65_w = st.sidebar.number_input(
 pension_indexation_rate = st.sidebar.slider(
     "年金額の年間改定率（%）", 0.0, 3.0, 1.0, step=0.1
 )
-pension_net_rate = st.sidebar.slider(
-    "年金の手取り率（%）", 70, 100, 100, step=1,
-    help="初期値100%は、額面と手取りを同額として扱う設定です。",
-)
 
 st.sidebar.header("👶 子ども・育休設定")
 child_count = st.sidebar.selectbox("子供の人数", [0, 1, 2, 3], index=1)
@@ -426,7 +422,8 @@ for i in range(100 - current_age_h + 1):
       if age_w >= pension_start_age_w
       else 0
   )
-  current_pension_net = current_pension_gross * (pension_net_rate / 100)
+  # 健康保険・介護保険等は支出として別計上するため、年金は額面と同額
+  current_pension_net = current_pension_gross
 
   total_gross = (
       calculate_husband_gross_income(age_h)
