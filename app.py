@@ -108,10 +108,12 @@ with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）"):
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
 
-with st.sidebar.expander("🏦 年金設定"):
-    pension_at_65_h = st.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
-    pension_at_65_w = st.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
-    pension_indexation_rate = st.slider("年金額の年間改定率（%）", 0.0, 3.0, 0.2, step=0.1)
+with st.sidebar.expander("💰 収入・退職金設定"):
+    gross_income_w = st.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
+    income_change_rate_w = st.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
+    child_care_reduction_years = st.selectbox("育児短時間勤務の期間（年）", [1, 2, 3, 4, 5, 6, 7, 8], index=4)
+    retirement_payout_h = st.number_input("夫の退職金 (万円)", 0, 5000, 2000, step=100)
+    retirement_payout_w = st.number_input("妻の退職金 (万円)", 0, 5000, 500, step=100)
 
 with st.sidebar.expander("👶 子ども・育休設定"):
     child_count = st.selectbox("子供の人数", [0, 1, 2, 3], index=1)
@@ -131,13 +133,6 @@ with st.sidebar.expander("👶 子ども・育休設定"):
             f"第{i}子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0 if i==1 else 1, key=f"course_{i}"
         )
 
-with st.sidebar.expander("💰 収入・退職金設定"):
-    gross_income_w = st.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
-    income_change_rate_w = st.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
-    child_care_reduction_years = st.selectbox("育児短時間勤務の期間（年）", [1, 2, 3, 4, 5, 6, 7, 8], index=4)
-    retirement_payout_h = st.number_input("夫の退職金 (万円)", 0, 5000, 2000, step=100)
-    retirement_payout_w = st.number_input("妻の退職金 (万円)", 0, 5000, 500, step=100)
-
 with st.sidebar.expander("📈 資産・運用設定"):
     current_cash = st.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
     current_investment = st.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
@@ -146,13 +141,18 @@ with st.sidebar.expander("📈 資産・運用設定"):
     emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
-with st.sidebar.expander("🏠 支出・インフレ設定"):
+with st.sidebar.expander("🏠 支出・インフレ・年金連動設定"):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
+    pension_indexation_rate = st.slider("年金改定率のインフレ率に対する連動割合 (%)", 0.0, 100.0, 80.0, step=5.0) / 100.0
     living_expenses_monthly = st.number_input("基本生活費 (毎月・万円)", 0, 100, 30, step=1)
     housing_expenses_monthly = st.number_input("住居費 (毎月・万円)", 0, 50, 15, step=1)
     annual_travel_cost = st.number_input("年間旅行費 (万円)", 0, 200, 20, step=5)
     general_medical_cost = st.number_input("年間医療費 (万円)", 0, 50, 5, step=1)
     annual_social_cost = st.number_input("年間交際費 (万円)", 0, 100, 20, step=5)
+
+with st.sidebar.expander("🏦 年金設定"):
+    pension_at_65_h = st.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
+    pension_at_65_w = st.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
 
 with st.sidebar.expander("🚗 車・老後支出設定"):
     car_purchase_price = st.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
@@ -249,6 +249,8 @@ def run_simulation(real_return_rate):
     sim_stock = current_stock
     asset_depletion_age = None
     
+    effective_pension_rate = (expense_change_rate * pension_indexation_rate) / 100.0
+
     for i in range(100 - current_age_h + 1):
         age_h = current_age_h + i
         age_w = current_age_w + i
@@ -277,9 +279,9 @@ def run_simulation(real_return_rate):
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
                                 (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead else 0)
         
-        p_gross_h = calculated_pension_h * ((1 + pension_indexation_rate / 100) ** i) if age_h >= pension_start_age_h else 0
+        p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
-        p_gross_w = calculated_pension_w * ((1 + pension_indexation_rate / 100) ** i) if age_w >= pension_start_age_w else 0
+        p_gross_w = calculated_pension_w * ((1 + effective_pension_rate) ** i) if age_w >= pension_start_age_w else 0
         current_pension_gross = p_gross_h + p_gross_w
         
         pure_annual_income = net_h + net_w + current_pension_gross + annual_dividend
