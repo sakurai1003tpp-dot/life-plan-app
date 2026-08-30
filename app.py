@@ -525,7 +525,7 @@ with tab6:
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.7-flash',
                         contents=prompt,
                     )
                     st.markdown("---")
