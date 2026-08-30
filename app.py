@@ -517,9 +517,9 @@ with tab6:
 2. **懸念されるリスクへの対策**（破綻リスクや資産配分のバランス、教育費・老後資金について）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
-                # 軽量かつ安定したモデルに変更
+                # 推奨モデル gemini-3.6-flash に変更
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.6-flash',
                     contents=prompt,
                 )
                 st.markdown("---")
