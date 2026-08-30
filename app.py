@@ -1,3 +1,4 @@
+from google import genai
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 import pandas as pd
@@ -75,6 +76,9 @@ if st.sidebar.button("🔄 全設定を初期値に戻す", use_container_width=
     st.session_state.clear()
     st.session_state["scroll_sidebar_to_top"] = True
     st.rerun()
+
+st.sidebar.header("🤖 Gemini AI 連携設定")
+gemini_api_key = st.sidebar.text_input("Gemini APIキー", type="password", help="Google AI Studio等で取得したAPIキーを入力してください")
 
 st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
 current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
@@ -383,10 +387,10 @@ else:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------
-# タブ表示
+# タブ表示（tab6にGemini診断機能を追加）
 # ------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ", "📉 資産運用シミュレーション"]
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    ["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ", "📉 資産運用シミュレーション", "🤖 Gemini AI 家計診断"]
 )
 
 with tab1:
@@ -397,7 +401,6 @@ with tab1:
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
     ax1.plot(base_res["age"], base_res["cash"], label="現預金", color=COLOR_GREEN, linestyle="--", linewidth=2.0)
     ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%＋インフレ{expense_change_rate}% ＝名目{current_nominal_display:.1f}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
-    # 【追加】株式の推移線を描画
     ax1.plot(base_res["age"], base_res["stock"], label=f"個別株式（固定利回り {stock_return_rate}%）", color=COLOR_PURPLE, linestyle=":", linewidth=2.0)
     
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
@@ -483,3 +486,49 @@ with tab5:
     
     plt.tight_layout()
     st.pyplot(fig5)
+
+with tab6:
+    st.markdown("### 🤖 Gemini AIによる家計診断")
+    st.write("現在のパラメータとシミュレーション結果（資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    
+    if st.button("🚀 AIに家計診断を依頼する", type="primary"):
+        if not gemini_api_key:
+            st.warning("サイドバーの「Gemini APIキー」を入力してください。")
+        else:
+            with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
+                try:
+                    client = genai.Client(api_key=gemini_api_key)
+                    
+                    # AIに渡すためのサマリーデータ作成
+                    summary_text = f"""
+【シミュレーション条件・パラメータ】
+- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳）
+- 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
+- 子供の人数: {child_count}人
+- 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 (合計: {initial_wealth}万円)
+- 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
+- 投資信託想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
+
+【シミュレーション結果サマリー】
+- 資産ピーク時: {peak_wealth:,.0f}万円
+- 80歳時点の総資産: {wealth_at_80:,.0f}万円
+- 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
+"""
+                    prompt = f"""
+あなたは優秀なファイナンシャルプランナー（FP）です。以下のライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+
+{summary_text}
+
+以下の構成で回答を出力してください：
+1. **全体の評価・総評**（この家計の強みと最大の懸念点）
+2. **懸念されるリスクへの対策**（破綻リスクや資産配分のバランス、教育費・老後資金について）
+3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
+"""
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                    )
+                    st.markdown("---")
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"APIの呼び出し中にエラーが発生しました: {e}")
