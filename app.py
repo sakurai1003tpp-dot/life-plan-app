@@ -529,7 +529,7 @@ with tab6:
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
-                # 修正点: 明示的にAPIキーを渡すように初期化処理を変更
+                # APIキーを設定し、利用可能な最新モデル（gemini-3.6-flash）を指定
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 summary_text = f"""
@@ -557,7 +557,7 @@ with tab6:
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.6-flash',
                     contents=prompt,
                 )
                 st.markdown("---")
