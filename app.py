@@ -70,12 +70,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# タイトルエリア
+# タイトルエリア（絵文字を削除）
 st.markdown(
     """
     <div style="padding: 1rem 0; margin-bottom: 1rem;">
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ✨ ライフプランシミュレーション
+            ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
             将来の資産形成・キャッシュフロー・教育費を可視化し、あなたに最適なライフプランを提案します
@@ -111,7 +111,7 @@ with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）"):
 with st.sidebar.expander("🏦 年金設定"):
     pension_at_65_h = st.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
     pension_at_65_w = st.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
-    pension_indexation_rate = st.slider("年金額の年間改定率（%）", 0.0, 3.0, 1.0, step=0.1)
+    pension_indexation_rate = st.slider("年金額の年間改定率（%）", 0.0, 3.0, 0.2, step=0.1)
 
 with st.sidebar.expander("👶 子ども・育休設定"):
     child_count = st.selectbox("子供の人数", [0, 1, 2, 3], index=1)
