@@ -123,7 +123,6 @@ st.sidebar.header("📈 資産・運用設定")
 current_cash = st.sidebar.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
 current_investment = st.sidebar.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
 current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
-# インフレ連動モデルに対応するため「実質利回り」に変更
 base_real_return_rate = st.sidebar.slider("投資信託の想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
 emergency_fund_months = st.sidebar.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
 max_cash_limit = st.sidebar.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
@@ -237,7 +236,6 @@ def run_simulation(real_return_rate):
         inflation_factor = (1 + expense_change_rate / 100) ** i
         is_husband_dead = age_h > husband_death_age
 
-        # 【インフレ連動モデル】名目利回り ＝ 実質リターン ＋ インフレ率
         current_nominal_return_rate = real_return_rate + expense_change_rate
 
         if i > 0:
@@ -260,7 +258,6 @@ def run_simulation(real_return_rate):
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
                                 (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead else 0)
         
-        # 年金計算 (夫死亡時は遺族年金として受給)
         p_gross_h = calculated_pension_h * ((1 + pension_indexation_rate / 100) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
         p_gross_w = calculated_pension_w * ((1 + pension_indexation_rate / 100) ** i) if age_w >= pension_start_age_w else 0
@@ -280,7 +277,6 @@ def run_simulation(real_return_rate):
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost
             annual_expense = (base_expense * (0.90 if age_h >= 75 else 1.0) + general_medical_cost * migration_medical_cost_multiplier + annual_home_maintenance_cost + annual_retirement_insurance_cost) * inflation_factor
 
-        # 夫死亡による単身化に伴う生活費減額（70%）
         if is_husband_dead:
             annual_expense *= 0.70
 
@@ -289,14 +285,13 @@ def run_simulation(real_return_rate):
             extra_one_time += death_lump_sum_cost * inflation_factor
 
         c_exp = [get_child_yearly_expense(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) * inflation_factor for n in range(child_count)]
-        c_exp += [0] * (3 - len(c_exp)) # pad to 3
+        c_exp += [0] * (3 - len(c_exp))
         
         pure_total_expense = annual_expense + sum(c_exp) + extra_one_time
         pure_annual_balance = pure_annual_income - pure_total_expense
 
         sim_cash += pure_annual_balance + extra_retirement_cash
         
-        # 変動する緊急資金
         min_cash_reserve = pure_total_expense * (emergency_fund_months / 12)
 
         if age_h == retirement_age_h and not is_husband_dead:
@@ -309,7 +304,6 @@ def run_simulation(real_return_rate):
                 sim_cash += sale
             sim_cash -= (regional_house_cost * inflation_factor)
 
-        # キャッシュフロー調整
         if sim_cash < min_cash_reserve:
             shortfall = min_cash_reserve - sim_cash
             if sim_stock >= shortfall:
@@ -328,7 +322,6 @@ def run_simulation(real_return_rate):
         if total_wealth < 0 and asset_depletion_age is None:
             asset_depletion_age = age_h
 
-        # 履歴保存
         res["age"].append(age_h)
         res["wealth"].append(total_wealth)
         res["cash"].append(sim_cash)
@@ -356,7 +349,6 @@ def run_simulation(real_return_rate):
     res["depletion_age"] = asset_depletion_age
     return res
 
-# 基準となるシミュレーションの実行
 base_res = run_simulation(base_real_return_rate)
 
 # ------------------------------------------
@@ -405,6 +397,9 @@ with tab1:
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
     ax1.plot(base_res["age"], base_res["cash"], label="現預金", color=COLOR_GREEN, linestyle="--", linewidth=2.0)
     ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%＋インフレ{expense_change_rate}% ＝名目{current_nominal_display:.1f}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
+    # 【追加】株式の推移線を描画
+    ax1.plot(base_res["age"], base_res["stock"], label=f"個別株式（固定利回り {stock_return_rate}%）", color=COLOR_PURPLE, linestyle=":", linewidth=2.0)
+    
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax1.set_title("生涯資産シミュレーション", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
@@ -474,7 +469,7 @@ with tab5:
     fig5, ax5 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig5.patch.set_facecolor("#FFFDF9")
     ax5.plot(base_res["age"], base_res["wealth"], label=f"標準実質利回り ({base_real_return_rate}%)", color=COLOR_PRIMARY, linewidth=3.0)
-    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_real:=base_real_return_rate-1.5)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
+    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_return_rate-1.5)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
     ax5.plot(res_strong["age"], res_strong["wealth"], label=f"積極的実質利回り ({base_real_return_rate+1.5}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
     
     ax5.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
