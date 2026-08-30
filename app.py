@@ -128,10 +128,10 @@ emergency_fund_months = st.sidebar.slider("緊急資金の目安（生活費の�
 max_cash_limit = st.sidebar.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
 st.sidebar.header("🏠 支出・インフレ設定")
-expense_change_rate = st.sidebar.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.5, step=0.1)
-living_expenses_monthly = st.sidebar.number_input("基本生活費 (毎月・万円)", 0, 100, 33, step=1)
+expense_change_rate = st.sidebar.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
+living_expenses_monthly = st.sidebar.number_input("基本生活費 (毎月・万円)", 0, 100, 30, step=1)
 housing_expenses_monthly = st.sidebar.number_input("住居費 (毎月・万円)", 0, 50, 15, step=1)
-annual_travel_cost = st.sidebar.number_input("年間旅行費 (万円)", 0, 200, 30, step=5)
+annual_travel_cost = st.sidebar.number_input("年間旅行費 (万円)", 0, 200, 20, step=5)
 general_medical_cost = st.sidebar.number_input("年間医療費 (万円)", 0, 50, 5, step=1)
 annual_social_cost = st.sidebar.number_input("年間交際費 (万円)", 0, 100, 20, step=5)
 
@@ -139,7 +139,7 @@ st.sidebar.header("🚗 車・老後支出設定")
 car_purchase_price = st.sidebar.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
 car_maintenance_cost = st.sidebar.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
 car_replacement_cycle = st.sidebar.slider("車の買替サイクル (年)", 5, 20, 10)
-regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
+regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 4500, step=100)
 annual_home_maintenance_cost = st.sidebar.number_input("老後の住宅維持費（年額・万円）", 0, 300, 50, step=5)
 annual_retirement_insurance_cost = st.sidebar.number_input("老後の健康保険等（年額・万円）", 0, 300, 60, step=5)
 migration_medical_cost_multiplier = st.sidebar.slider("老後の医療費倍率", 1.0, 10.0, 4.0, step=0.1)
@@ -423,7 +423,6 @@ with tab1:
     st.pyplot(fig1)
 
 with tab2:
-    # 既存の収入グラフと同様の実装（省略防止のため簡易記述）
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig2.patch.set_facecolor("#FFFDF9")
     ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入", color=COLOR_GREEN, linewidth=2.5)
