@@ -123,7 +123,8 @@ st.sidebar.header("📈 資産・運用設定")
 current_cash = st.sidebar.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
 current_investment = st.sidebar.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
 current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
-base_annual_return_rate = st.sidebar.slider("投資信託の想定利回り (%)", 0.0, 15.0, 4.5, step=0.1)
+# インフレ連動モデルに対応するため「実質利回り」に変更
+base_real_return_rate = st.sidebar.slider("投資信託の想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
 emergency_fund_months = st.sidebar.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
 max_cash_limit = st.sidebar.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
@@ -218,9 +219,9 @@ def get_child_living_expense_addition(c_age, course_type=None):
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 # ------------------------------------------
-# シミュレーション実行関数
+# シミュレーション実行関数（インフレ連動モデル対応）
 # ------------------------------------------
-def run_simulation(inv_return_rate):
+def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "net_income", "expense", "balance", 
                            "child1", "child2", "child3", "child_total", "cash_ratio", "invest_ratio", "stock_ratio",
                            "h_gross", "w_gross", "p_gross", "hh_gross", "h_net", "w_net", "p_net", "hh_net"]}
@@ -236,8 +237,11 @@ def run_simulation(inv_return_rate):
         inflation_factor = (1 + expense_change_rate / 100) ** i
         is_husband_dead = age_h > husband_death_age
 
+        # 【インフレ連動モデル】名目利回り ＝ 実質リターン ＋ インフレ率
+        current_nominal_return_rate = real_return_rate + expense_change_rate
+
         if i > 0:
-            sim_investment *= (1 + inv_return_rate / 100)
+            sim_investment *= (1 + current_nominal_return_rate / 100)
             sim_stock *= (1 + stock_return_rate / 100)
         annual_dividend = (sim_stock * (stock_dividend_yield / 100)) * 0.79685 if sim_stock > 0 else 0
 
@@ -353,7 +357,7 @@ def run_simulation(inv_return_rate):
     return res
 
 # 基準となるシミュレーションの実行
-base_res = run_simulation(base_annual_return_rate)
+base_res = run_simulation(base_real_return_rate)
 
 # ------------------------------------------
 # メトリクスカードとアラート
@@ -397,9 +401,10 @@ with tab1:
     fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10 * chart_scale, 11 * chart_scale), sharex=True)
     fig1.patch.set_facecolor("#FFFDF9")
     
+    current_nominal_display = base_real_return_rate + expense_change_rate
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
     ax1.plot(base_res["age"], base_res["cash"], label="現預金", color=COLOR_GREEN, linestyle="--", linewidth=2.0)
-    ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（利回り {base_annual_return_rate}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
+    ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%＋インフレ{expense_change_rate}% ＝名目{current_nominal_display:.1f}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax1.set_title("生涯資産シミュレーション", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
@@ -461,16 +466,16 @@ with tab4:
 
 with tab5:
     st.markdown("### 📊 運用利回りのシナリオ別比較")
-    st.write(f"退職直前・直後の相場変動リスクを確認するため、「標準（{base_annual_return_rate}%）」「弱気（{max(0, base_annual_return_rate-2.0)}%）」「強気（{base_annual_return_rate+2.0}%）」の3パターンで総資産の推移を比較します。")
+    st.write(f"インフレ率（{expense_change_rate}%）に対する実質利回りのシナリオ（標準：{base_real_return_rate}%、保守的：{max(0, base_real_return_rate-1.5)}%、積極的：{base_real_return_rate+1.5}%）で総資産の推移を比較します。")
     
-    res_weak = run_simulation(max(0, base_annual_return_rate - 2.0))
-    res_strong = run_simulation(base_annual_return_rate + 2.0)
+    res_weak = run_simulation(max(0, base_real_return_rate - 1.5))
+    res_strong = run_simulation(base_real_return_rate + 1.5)
     
     fig5, ax5 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig5.patch.set_facecolor("#FFFDF9")
-    ax5.plot(base_res["age"], base_res["wealth"], label=f"標準シナリオ ({base_annual_return_rate}%)", color=COLOR_PRIMARY, linewidth=3.0)
-    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"弱気シナリオ ({max(0, base_annual_return_rate-2.0)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
-    ax5.plot(res_strong["age"], res_strong["wealth"], label=f"強気シナリオ ({base_annual_return_rate+2.0}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
+    ax5.plot(base_res["age"], base_res["wealth"], label=f"標準実質利回り ({base_real_return_rate}%)", color=COLOR_PRIMARY, linewidth=3.0)
+    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_real:=base_real_return_rate-1.5)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
+    ax5.plot(res_strong["age"], res_strong["wealth"], label=f"積極的実質利回り ({base_real_return_rate+1.5}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
     
     ax5.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax5.set_title("利回りシナリオ別の総資産推移", fontsize=13, fontweight="bold")
