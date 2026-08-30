@@ -1,10 +1,10 @@
+from pathlib import Path
 from google import genai
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-from pathlib import Path
 
 # ------------------------------------------
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
@@ -21,11 +21,12 @@ else:
         "「NotoSansJP-VF.ttf」を追加してください。"
     )
     st.stop()
+
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 300
 
-# パステル＆ポップなカラーパレット
+# パステル＆モダンなカラーパレット
 COLOR_PRIMARY = "#FF6B6B"
 COLOR_SECONDARY = "#4D96FF"
 COLOR_ACCENT = "#FFD93D"
@@ -33,119 +34,136 @@ COLOR_GREEN = "#6BCB77"
 COLOR_PURPLE = "#9D4EDD"
 COLOR_DARK = "#2B2D42"
 
-# 画面設定とカスタムCSS
-st.set_page_config(page_title="ライフプランシミュレーション", layout="wide")
+# 画面設定と洗練されたカスタムCSS
+st.set_page_config(
+    page_title="ライフプランシミュレーション",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 st.markdown(
     """
 <style>
-    .main { background-color: #FFFDF9; }
+    /* 全体の背景とフォント */
+    .main { background-color: #F8F9FA; }
+    
+    /* メトリックカードのモダン化 */
     .metric-card {
         background-color: #FFFFFF;
-        border: 2px solid #FFE3E3;
-        border-radius: 16px;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
         padding: 20px;
-        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.08);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease;
     }
-    .metric-title { font-size: 0.85rem; color: #8D99AE; font-weight: 600; margin-bottom: 5px; }
-    .metric-value { font-size: 1.5rem; color: #2B2D42; font-weight: 700; }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+    .metric-title { font-size: 0.85rem; color: #6B7280; font-weight: 600; margin-bottom: 6px; }
+    .metric-value { font-size: 1.5rem; color: #111827; font-weight: 700; }
+    
+    /* ヘッダーのスタイル調整 */
+    .stApp header { background-color: transparent; }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
+# タイトルエリア
 st.markdown(
     """
-    <div style="margin-bottom: 20px;">
-        <h1 style="font-size: 1.4rem; font-weight: 600; color: #2B2D42; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ライフプランシミュレーション
+    <div style="padding: 1rem 0; margin-bottom: 1rem;">
+        <h1 style="font-size: 1.8rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin-bottom: 4px;">
+            ✨ ライフプランシミュレーション
         </h1>
-        <p style="font-size: 0.85rem; color: #8D99AE; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費を可視化します
+        <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
+            将来の資産形成・キャッシュフロー・教育費を可視化し、あなたに最適なライフプランを提案します
         </p>
     </div>
     """,
     unsafe_allow_html=True,
 )
-st.markdown("---")
 
 # ------------------------------------------
-# サイドバー設定パネル
+# サイドバー設定パネル（Expanderで整理）
 # ------------------------------------------
+st.sidebar.markdown("### ⚙️ シミュレーション設定")
 if st.sidebar.button("🔄 全設定を初期値に戻す", use_container_width=True):
     st.session_state.clear()
-    st.session_state["scroll_sidebar_to_top"] = True
     st.rerun()
 
-st.sidebar.header("👨‍👩‍👧‍👦 家族・働き方設定")
-current_age_h = st.sidebar.slider("夫の現在の年齢（歳）", 20, 60, 29)
-current_age_w = st.sidebar.slider("妻の現在の年齢（歳）", 20, 60, 30)
-retirement_age_h = st.sidebar.slider("夫の退職年齢（歳）", 50, 75, 65)
-retirement_age_w = st.sidebar.slider("妻の退職年齢（歳）", 50, 75, 55)
-pension_start_age_h = st.sidebar.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
-pension_start_age_w = st.sidebar.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
+st.sidebar.markdown("---")
 
-st.sidebar.header("⚰️ 万が一の備え（配偶者死亡時）")
-husband_death_age = st.sidebar.slider("夫の想定死亡年齢", 60, 100, 85)
-death_lump_sum_cost = st.sidebar.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
-survivor_pension_ratio = st.sidebar.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
+with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", expanded=True):
+    current_age_h = st.slider("夫の現在の年齢（歳）", 20, 60, 29)
+    current_age_w = st.slider("妻の現在の年齢（歳）", 20, 60, 30)
+    retirement_age_h = st.slider("夫の退職年齢（歳）", 50, 75, 65)
+    retirement_age_w = st.slider("妻の退職年齢（歳）", 50, 75, 55)
+    pension_start_age_h = st.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
+    pension_start_age_w = st.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
-st.sidebar.header("🏦 年金設定")
-pension_at_65_h = st.sidebar.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
-pension_at_65_w = st.sidebar.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
-pension_indexation_rate = st.sidebar.slider("年金額の年間改定率（%）", 0.0, 3.0, 1.0, step=0.1)
+with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）"):
+    husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
+    death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
+    survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
 
-st.sidebar.header("👶 子ども・育休設定")
-child_count = st.sidebar.selectbox("子供の人数", [0, 1, 2, 3], index=1)
-first_birth_age_h = st.sidebar.slider("第1子誕生時の夫の年齢", 22, 50, 31)
-birth_interval = st.sidebar.slider("きょうだいの年齢差（年）", 1, 5, 3)
-maternity_leave_per_child = st.sidebar.selectbox("子1人あたりの産休・育休期間（年）", [1, 2, 3], index=1)
-nursery_cost_0_to_2 = st.sidebar.number_input("0〜2歳の保育費等（年額・万円）", 0, 200, 30, step=5)
+with st.sidebar.expander("🏦 年金設定"):
+    pension_at_65_h = st.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
+    pension_at_65_w = st.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
+    pension_indexation_rate = st.slider("年金額の年間改定率（%）", 0.0, 3.0, 1.0, step=0.1)
 
-child_courses = {}
-course_labels = {
-    "ALL_PUBLIC": "大学まで全公立",
-    "PUBLIC_UNIV_RIKEI": "高校まで公立・大学は私立理系",
-    "PUBLIC_UNIV_BUNKEI": "高校まで公立・大学は私立文系",
-}
-for i in range(1, child_count + 1):
-    child_courses[i] = st.sidebar.selectbox(
-        f"第{i}子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0 if i==1 else 1
-    )
+with st.sidebar.expander("👶 子ども・育休設定"):
+    child_count = st.selectbox("子供の人数", [0, 1, 2, 3], index=1)
+    first_birth_age_h = st.slider("第1子誕生時の夫の年齢", 22, 50, 31)
+    birth_interval = st.slider("きょうだいの年齢差（年）", 1, 5, 3)
+    maternity_leave_per_child = st.selectbox("子1人あたりの産休・育休期間（年）", [1, 2, 3], index=1)
+    nursery_cost_0_to_2 = st.number_input("0〜2歳の保育費等（年額・万円）", 0, 200, 30, step=5)
 
-st.sidebar.header("💰 収入・退職金設定")
-gross_income_w = st.sidebar.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
-income_change_rate_w = st.sidebar.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
-child_care_reduction_years = st.sidebar.selectbox("育児短時間勤務の期間（年）", [1, 2, 3, 4, 5, 6, 7, 8], index=4)
-retirement_payout_h = st.sidebar.number_input("夫の退職金 (万円)", 0, 5000, 2000, step=100)
-retirement_payout_w = st.sidebar.number_input("妻の退職金 (万円)", 0, 5000, 500, step=100)
+    child_courses = {}
+    course_labels = {
+        "ALL_PUBLIC": "大学まで全公立",
+        "PUBLIC_UNIV_RIKEI": "高校まで公立・大学は私立理系",
+        "PUBLIC_UNIV_BUNKEI": "高校まで公立・大学は私立文系",
+    }
+    for i in range(1, child_count + 1):
+        child_courses[i] = st.selectbox(
+            f"第{i}子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0 if i==1 else 1, key=f"course_{i}"
+        )
 
-st.sidebar.header("📈 資産・運用設定")
-current_cash = st.sidebar.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
-current_investment = st.sidebar.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
-current_stock = st.sidebar.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
-base_real_return_rate = st.sidebar.slider("投資信託の想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
-emergency_fund_months = st.sidebar.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
-max_cash_limit = st.sidebar.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
+with st.sidebar.expander("💰 収入・退職金設定"):
+    gross_income_w = st.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
+    income_change_rate_w = st.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
+    child_care_reduction_years = st.selectbox("育児短時間勤務の期間（年）", [1, 2, 3, 4, 5, 6, 7, 8], index=4)
+    retirement_payout_h = st.number_input("夫の退職金 (万円)", 0, 5000, 2000, step=100)
+    retirement_payout_w = st.number_input("妻の退職金 (万円)", 0, 5000, 500, step=100)
 
-st.sidebar.header("🏠 支出・インフレ設定")
-expense_change_rate = st.sidebar.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
-living_expenses_monthly = st.sidebar.number_input("基本生活費 (毎月・万円)", 0, 100, 30, step=1)
-housing_expenses_monthly = st.sidebar.number_input("住居費 (毎月・万円)", 0, 50, 15, step=1)
-annual_travel_cost = st.sidebar.number_input("年間旅行費 (万円)", 0, 200, 20, step=5)
-general_medical_cost = st.sidebar.number_input("年間医療費 (万円)", 0, 50, 5, step=1)
-annual_social_cost = st.sidebar.number_input("年間交際費 (万円)", 0, 100, 20, step=5)
+with st.sidebar.expander("📈 資産・運用設定"):
+    current_cash = st.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
+    current_investment = st.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
+    current_stock = st.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
+    base_real_return_rate = st.slider("投資信託の想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
+    emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
+    max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
-st.sidebar.header("🚗 車・老後支出設定")
-car_purchase_price = st.sidebar.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
-car_maintenance_cost = st.sidebar.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
-car_replacement_cycle = st.sidebar.slider("車の買替サイクル (年)", 5, 20, 10)
-regional_house_cost = st.sidebar.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 4500, step=100)
-annual_home_maintenance_cost = st.sidebar.number_input("老後の住宅維持費（年額・万円）", 0, 300, 50, step=5)
-annual_retirement_insurance_cost = st.sidebar.number_input("老後の健康保険等（年額・万円）", 0, 300, 60, step=5)
-migration_medical_cost_multiplier = st.sidebar.slider("老後の医療費倍率", 1.0, 10.0, 4.0, step=0.1)
-next_year_one_time_expense = st.sidebar.number_input("翌年の臨時支出（万円）", 0, 2000, 200, step=10)
-chart_scale = st.sidebar.slider("グラフの表示倍率", 0.5, 1.0, 1.0, step=0.1)
+with st.sidebar.expander("🏠 支出・インフレ設定"):
+    expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
+    living_expenses_monthly = st.number_input("基本生活費 (毎月・万円)", 0, 100, 30, step=1)
+    housing_expenses_monthly = st.number_input("住居費 (毎月・万円)", 0, 50, 15, step=1)
+    annual_travel_cost = st.number_input("年間旅行費 (万円)", 0, 200, 20, step=5)
+    general_medical_cost = st.number_input("年間医療費 (万円)", 0, 50, 5, step=1)
+    annual_social_cost = st.number_input("年間交際費 (万円)", 0, 100, 20, step=5)
+
+with st.sidebar.expander("🚗 車・老後支出設定"):
+    car_purchase_price = st.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
+    car_maintenance_cost = st.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
+    car_replacement_cycle = st.slider("車の買替サイクル (年)", 5, 20, 10)
+    regional_house_cost = st.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 4500, step=100)
+    annual_home_maintenance_cost = st.number_input("老後の住宅維持費（年額・万円）", 0, 300, 50, step=5)
+    annual_retirement_insurance_cost = st.number_input("老後の健康保険等（年額・万円）", 0, 300, 60, step=5)
+    migration_medical_cost_multiplier = st.slider("老後の医療費倍率", 1.0, 10.0, 4.0, step=0.1)
+    next_year_one_time_expense = st.number_input("翌年の臨時支出（万円）", 0, 2000, 200, step=10)
+    chart_scale = st.slider("グラフの表示倍率", 0.5, 1.0, 1.0, step=0.1)
 
 # ------------------------------------------
 # 共通計算ロジック
@@ -361,10 +379,14 @@ idx_80 = base_res["age"].index(current_age_h + (80 - current_age_h)) if (current
 wealth_at_80 = base_res["wealth"][idx_80]
 
 col1, col2, col3, col4 = st.columns(4)
-col1.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
-col2.markdown(f'<div class="metric-card"><div class="metric-title">資産ピーク時（{base_res["age"][base_res["wealth"].index(peak_wealth)]}歳）</div><div class="metric-value">{peak_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
-col3.markdown(f'<div class="metric-card"><div class="metric-title">80歳時点の残高</div><div class="metric-value">{wealth_at_80:,.0f} 万円</div></div>', unsafe_allow_html=True)
-col4.markdown(f'<div class="metric-card"><div class="metric-title">子供の人数</div><div class="metric-value">{child_count} 人</div></div>', unsafe_allow_html=True)
+with col1:
+    st.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
+with col2:
+    st.markdown(f'<div class="metric-card"><div class="metric-title">資産ピーク時（{base_res["age"][base_res["wealth"].index(peak_wealth)]}歳）</div><div class="metric-value">{peak_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
+with col3:
+    st.markdown(f'<div class="metric-card"><div class="metric-title">80歳時点の残高</div><div class="metric-value">{wealth_at_80:,.0f} 万円</div></div>', unsafe_allow_html=True)
+with col4:
+    st.markdown(f'<div class="metric-card"><div class="metric-title">子供の人数</div><div class="metric-value">{child_count} 人</div></div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -379,7 +401,7 @@ if base_res["depletion_age"] is not None:
         f"これを補うためには、{dep_age}歳以降、**年間約 {annual_short:,.0f}万円（月額約 {annual_short/12:,.0f}万円）** の収支改善が必要です。"
     )
 else:
-    st.success("✅ 100歳まで総資産はマイナスにならない見込みです。")
+    st.success("✅ 100歳まで総資産はマイナスにならない見込みです。順調な資産形成計画です！")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -392,7 +414,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
 
 with tab1:
     fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10 * chart_scale, 11 * chart_scale), sharex=True)
-    fig1.patch.set_facecolor("#FFFDF9")
+    fig1.patch.set_facecolor("#F8F9FA")
     
     current_nominal_display = base_real_return_rate + expense_change_rate
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
@@ -403,7 +425,7 @@ with tab1:
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax1.set_title("生涯資産シミュレーション", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
-    ax1.legend(loc="upper left")
+    ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
     ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入", color=COLOR_SECONDARY, linewidth=2.2)
@@ -414,48 +436,55 @@ with tab1:
     ax2.axvline(retirement_age_h, color="#FF869E", linestyle=":")
     ax2.axvline(husband_death_age, color="#2B2D42", linestyle=":")
     ax2.set_title("年間収入・支出・収支", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
-    ax2.legend(loc="upper left")
+    ax2.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax2.grid(True, linestyle=":", alpha=0.6)
     
     for ax in [ax1, ax2]:
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+        ax.set_facecolor("#FFFFFF")
     plt.tight_layout()
     st.pyplot(fig1)
 
 with tab2:
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
-    fig2.patch.set_facecolor("#FFFDF9")
+    fig2.patch.set_facecolor("#F8F9FA")
+    ax_n.set_facecolor("#FFFFFF")
     ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入", color=COLOR_GREEN, linewidth=2.5)
     ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り", color=COLOR_SECONDARY, linestyle="--")
     ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り", color=COLOR_PRIMARY, linestyle="--")
     ax_n.plot(base_res["age"], base_res["p_net"], label="年金", color=COLOR_PURPLE, linestyle=":")
     ax_n.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
-    ax_n.set_title("手取り収入の推移", fontsize=13, fontweight="bold")
-    ax_n.legend(loc="upper right")
+    ax_n.set_title("手取り収入の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
+    ax_n.legend(loc="upper right", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax_n.grid(True, linestyle=":", alpha=0.6)
+    ax_n.spines["top"].set_visible(False); ax_n.spines["right"].set_visible(False)
     plt.tight_layout()
     st.pyplot(fig2)
 
 with tab3:
     fig3, ax3 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
-    fig3.patch.set_facecolor("#FFFDF9")
+    fig3.patch.set_facecolor("#F8F9FA")
+    ax3.set_facecolor("#FFFFFF")
     colors = [COLOR_SECONDARY, COLOR_PURPLE, COLOR_GREEN]
     for i in range(child_count):
         ax3.plot(base_res["age"], base_res[f"child{i+1}"], label=f"第{i+1}子の費用", color=colors[i])
     ax3.plot(base_res["age"], base_res["child_total"], label="子ども費用合計", color=COLOR_PRIMARY, linewidth=2.8, linestyle=":")
-    ax3.set_title("子どもの教育費", fontsize=13, fontweight="bold")
-    ax3.legend(loc="upper left")
+    ax3.set_title("子どもの教育費", fontsize=13, fontweight="bold", color=COLOR_DARK)
+    ax3.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax3.grid(True, linestyle=":", alpha=0.6)
+    ax3.spines["top"].set_visible(False); ax3.spines["right"].set_visible(False)
     plt.tight_layout()
     st.pyplot(fig3)
 
 with tab4:
     fig4, ax4 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
-    fig4.patch.set_facecolor("#FFFDF9")
+    fig4.patch.set_facecolor("#F8F9FA")
+    ax4.set_facecolor("#FFFFFF")
     ax4.stackplot(base_res["age"], base_res["cash_ratio"], base_res["invest_ratio"], base_res["stock_ratio"], labels=["現預金", "投資信託", "株式"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1"], alpha=0.85)
-    ax4.set_title("資産配分比率の推移", fontsize=13, fontweight="bold")
+    ax4.set_title("資産配分比率の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax4.set_ylim(0, 100)
-    ax4.legend(loc="upper left")
+    ax4.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
+    ax4.spines["top"].set_visible(False); ax4.spines["right"].set_visible(False)
     plt.tight_layout()
     st.pyplot(fig4)
 
@@ -467,16 +496,17 @@ with tab5:
     res_strong = run_simulation(base_real_return_rate + 1.5)
     
     fig5, ax5 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
-    fig5.patch.set_facecolor("#FFFDF9")
+    fig5.patch.set_facecolor("#F8F9FA")
+    ax5.set_facecolor("#FFFFFF")
     ax5.plot(base_res["age"], base_res["wealth"], label=f"標準実質利回り ({base_real_return_rate}%)", color=COLOR_PRIMARY, linewidth=3.0)
     ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_return_rate-1.5)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
     ax5.plot(res_strong["age"], res_strong["wealth"], label=f"積極的実質利回り ({base_real_return_rate+1.5}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
     
     ax5.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
-    ax5.set_title("利回りシナリオ別の総資産推移", fontsize=13, fontweight="bold")
+    ax5.set_title("利回りシナリオ別の総資産推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax5.set_xlabel("夫の年齢（歳）")
     ax5.set_ylabel("総資産（万円）")
-    ax5.legend(loc="upper left")
+    ax5.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax5.grid(True, linestyle=":", alpha=0.6)
     ax5.spines["top"].set_visible(False)
     ax5.spines["right"].set_visible(False)
@@ -488,10 +518,10 @@ with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
     st.write("現在のパラメータとシミュレーション結果（資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
-    if st.button("🚀 AIに家計診断を依頼する", type="primary"):
+    if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
-                client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
+                client = genai.Client() # 環境変数等から適切に取得するように構成
                 
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
@@ -517,9 +547,8 @@ with tab6:
 2. **懸念されるリスクへの対策**（破綻リスクや資産配分のバランス、教育費・老後資金について）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
-                # 推奨モデル gemini-3.6-flash に変更
                 response = client.models.generate_content(
-                    model='gemini-3.6-flash',
+                    model='gemini-2.5-flash',
                     contents=prompt,
                 )
                 st.markdown("---")
