@@ -243,8 +243,8 @@ def get_child_living_expense_addition(c_age, course_type=None):
 # ------------------------------------------
 def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "net_income", "expense", "balance", 
-                           "child1", "child2", "child3", "child_total", "cash_ratio", "invest_ratio", "stock_ratio",
-                           "h_gross", "w_gross", "p_gross", "hh_gross", "h_net", "w_net", "p_net", "hh_net"]}
+                         "child1", "child2", "child3", "child_total", "cash_ratio", "invest_ratio", "stock_ratio",
+                         "h_gross", "w_gross", "p_gross", "hh_gross", "h_net", "w_net", "p_net", "hh_net"]}
     
     sim_cash = current_cash
     sim_investment = current_investment
@@ -297,7 +297,7 @@ def run_simulation(real_return_rate):
         if age_h < retirement_age_h or age_w < retirement_age_w:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
             total_child_living = sum([get_child_living_expense_addition(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) 
-                                      for n in range(child_count)])
+                                    for n in range(child_count)])
             annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated) * inflation_factor
         else:
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost
@@ -529,7 +529,8 @@ with tab6:
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
-                client = genai.Client()
+                # 修正点: 明示的にAPIキーを渡すように初期化処理を変更
+                client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
