@@ -5,6 +5,7 @@ from matplotlib import font_manager
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import time
 
 # ------------------------------------------
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
@@ -70,7 +71,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# タイトルエリア（絵文字を削除）
+# タイトルエリア
 st.markdown(
     """
     <div style="padding: 1rem 0; margin-bottom: 1rem;">
@@ -86,14 +87,13 @@ st.markdown(
 )
 
 # ------------------------------------------
-# サイドバー設定パネル（Expanderで整理）
+# サイドバー設定パネル
 # ------------------------------------------
 st.sidebar.markdown("### ⚙️ シミュレーション設定")
 if st.sidebar.button("🔄 全設定を初期値に戻す", use_container_width=True):
     st.session_state.clear()
     st.rerun()
 
-# グラフの大きさを変えるバーを独立して配置
 chart_scale = st.sidebar.slider("グラフの表示倍率", 0.5, 1.0, 1.0, step=0.1)
 
 st.sidebar.markdown("---")
@@ -266,7 +266,6 @@ def run_simulation(real_return_rate):
             sim_stock *= (1 + stock_return_rate / 100)
         annual_dividend = (sim_stock * (stock_dividend_yield / 100)) * 0.79685 if sim_stock > 0 else 0
 
-        # 収入計算（額面と手取り）
         gross_h = 0 if is_husband_dead else calculate_husband_gross_income(age_h)
         net_h = calculate_net_income(gross_h) if age_h < retirement_age_h else 0
         
@@ -281,7 +280,6 @@ def run_simulation(real_return_rate):
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
                                 (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead else 0)
         
-        # 年金は額面＝手取りとする
         p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
         p_gross_w = calculated_pension_w * ((1 + effective_pension_rate) ** i) if age_w >= pension_start_age_w else 0
@@ -291,7 +289,6 @@ def run_simulation(real_return_rate):
         pure_annual_income = net_h + net_w + current_pension_net + annual_dividend
         total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend
 
-        # 支出計算
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         
         if age_h < retirement_age_h or age_w < retirement_age_w:
@@ -527,9 +524,9 @@ with tab6:
     st.write("現在のパラメータとシミュレーション結果（資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
-        with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
+        with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
             try:
-                # APIキーを設定し、利用可能な最新モデル（gemini-3.6-flash）を指定
+                # 最新モデル（gemini-3.6-flash）を指定
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 summary_text = f"""
@@ -556,11 +553,27 @@ with tab6:
 2. **懸念されるリスクへの対策**（破綻リスクや資産配分のバランス、教育費・老後資金について）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
-                response = client.models.generate_content(
-                    model='gemini-3.6-flash',
-                    contents=prompt,
-                )
+                
+                # 503エラー（一時的高負荷）対策のリトライ処理（最大3回）
+                response = None
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        response = client.models.generate_content(
+                            model='gemini-3.6-flash',
+                            contents=prompt,
+                        )
+                        break
+                    except Exception as api_err:
+                        # 503や過負荷関連のエラーが含まれる場合、少し待って再試行
+                        err_str = str(api_err)
+                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower()) and attempt < max_retries - 1:
+                            time.sleep(2 ** attempt) # 1秒、2秒と待機を増やす
+                            continue
+                        else:
+                            raise api_err
+
                 st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"APIの呼び出し中にエラーが発生しました: {e}")
+                st.error(f"APIの呼び出し中にエラーが発生しました（サーバー側が一時的に混雑しています。少し時間を置いて再度お試しください）: {e}")
