@@ -159,7 +159,7 @@ with st.sidebar.expander("🚗 車・老後支出設定"):
     car_purchase_price = st.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
     car_maintenance_cost = st.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
     car_replacement_cycle = st.slider("車の買替サイクル (年)", 5, 20, 10)
-    regional_house_cost = st.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 4500, step=100)
+    regional_house_cost = st.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
     annual_home_maintenance_cost = st.number_input("老後の住宅維持費（年額・万円）", 0, 300, 50, step=5)
     annual_retirement_insurance_cost = st.number_input("老後の健康保険等（年額・万円）", 0, 300, 60, step=5)
     migration_medical_cost_multiplier = st.slider("老後の医療費倍率", 1.0, 10.0, 4.0, step=0.1)
@@ -554,6 +554,7 @@ with tab6:
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
+- 定年時住宅購入費用: {regional_house_cost}万円
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
 
@@ -569,7 +570,7 @@ with tab6:
 
 以下の構成で回答を出力してください：
 1. **全体の評価・総評**（この家計の強みと最大の懸念点、企業型DC活用の評価）
-2. **懸念されるリスクへの対策**（60歳までのキャッシュフローや教育費、企業型DCの資金拘束リスクについて）
+2. **懸念されるリスクへの対策**（60歳時点の5,000万円の住宅購入費やキャッシュフロー、企業型DCの資金拘束リスクについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
