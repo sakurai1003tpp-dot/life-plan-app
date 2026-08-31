@@ -93,7 +93,7 @@ chart_scale = st.sidebar.slider("グラフの表示倍率", 0.5, 1.0, 1.0, step=
 
 st.sidebar.markdown("---")
 
-with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", expanded=True):
+with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", expanded=False):
     current_age_h = st.slider("夫の現在の年齢（歳）", 20, 60, 29)
     current_age_w = st.slider("妻の現在の年齢（歳）", 20, 60, 30)
     retirement_age_h = st.slider("夫の退職年齢（歳）", 50, 75, 65)
@@ -101,19 +101,19 @@ with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", e
     pension_start_age_h = st.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
     pension_start_age_w = st.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
 
-with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）"):
+with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
 
-with st.sidebar.expander("💰 収入・退職金設定"):
+with st.sidebar.expander("💰 収入・退職金設定", expanded=False):
     gross_income_w = st.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
     income_change_rate_w = st.slider("妻の年収上昇率 (%/年)", 0.0, 5.0, 1.25, step=0.05)
     child_care_reduction_years = st.selectbox("育児短時間勤務の期間（年）", [1, 2, 3, 4, 5, 6, 7, 8], index=4)
     retirement_payout_h = st.number_input("夫の退職金 (万円)", 0, 5000, 2000, step=100)
     retirement_payout_w = st.number_input("妻の退職金 (万円)", 0, 5000, 500, step=100)
 
-with st.sidebar.expander("👶 子ども・育休設定"):
+with st.sidebar.expander("👶 子ども・育休設定", expanded=False):
     child_count = st.selectbox("子供の人数", [0, 1, 2, 3], index=1)
     first_birth_age_h = st.slider("第1子誕生時の夫の年齢", 22, 50, 31)
     birth_interval = st.slider("きょうだいの年齢差（年）", 1, 5, 3)
@@ -131,7 +131,7 @@ with st.sidebar.expander("👶 子ども・育休設定"):
             f"第{i}子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0 if i==1 else 1, key=f"course_{i}"
         )
 
-with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=True):
+with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=False):
     current_cash = st.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
     current_investment = st.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
     current_stock = st.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
@@ -142,14 +142,14 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Tr
     emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
-with st.sidebar.expander("🏥 医療・民間保険設定", expanded=True):
+with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     annual_insurance_active = st.number_input("現役期の年間民間保険料（医療・がん保険等・万円）", 0, 50, 10, step=1)
     annual_insurance_retired = st.number_input("老後の年間民間保険料（医療・がん保険等・万円）", 0, 50, 8, step=1)
     enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
-with st.sidebar.expander("🏠 支出・インフレ・年金連動設定"):
+with st.sidebar.expander("🏠 支出・インフレ・年金連動設定", expanded=False):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
     pension_indexation_rate = st.slider("年金改定率のインフレ率に対する連動割合 (%)", 0.0, 100.0, 80.0, step=5.0) / 100.0
     living_expenses_monthly = st.number_input("基本生活費 (毎月・万円)", 0, 100, 30, step=1)
@@ -158,11 +158,11 @@ with st.sidebar.expander("🏠 支出・インフレ・年金連動設定"):
     general_medical_cost = st.number_input("年間医療費 (万円)", 0, 50, 5, step=1)
     annual_social_cost = st.number_input("年間交際費 (万円)", 0, 100, 20, step=5)
 
-with st.sidebar.expander("🏦 年金設定"):
+with st.sidebar.expander("🏦 年金設定", expanded=False):
     pension_at_65_h = st.number_input("夫の65歳年金見込額（額面・万円）", 0, 1000, 260, step=5)
     pension_at_65_w = st.number_input("妻の65歳年金見込額（額面・万円）", 0, 1000, 165, step=5)
 
-with st.sidebar.expander("🚗 車・老後公的保険設定"):
+with st.sidebar.expander("🚗 車・老後公的保険設定", expanded=False):
     car_purchase_price = st.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
     car_maintenance_cost = st.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
     car_replacement_cycle = st.slider("車の買替サイクル (年)", 5, 20, 10)
