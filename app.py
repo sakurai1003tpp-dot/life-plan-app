@@ -143,7 +143,7 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Tr
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
 with st.sidebar.expander("🏥 医療・民間保険設定", expanded=True):
-    annual_insurance_active = st.number_input("現役期の年間民間保険料（医療・がん保険等・万円）", 0, 50, 12, step=1)
+    annual_insurance_active = st.number_input("現役期の年間民間保険料（医療・がん保険等・万円）", 0, 50, 10, step=1)
     annual_insurance_retired = st.number_input("老後の年間民間保険料（医療・がん保険等・万円）", 0, 50, 8, step=1)
     enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
@@ -166,9 +166,9 @@ with st.sidebar.expander("🚗 車・老後公的保険設定"):
     car_purchase_price = st.number_input("車の購入価格 (万円)", 0, 1000, 300, step=10)
     car_maintenance_cost = st.number_input("車の年間維持費 (万円)", 0, 100, 40, step=1)
     car_replacement_cycle = st.slider("車の買替サイクル (年)", 5, 20, 10)
-    regional_house_cost = st.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 5000, step=100)
+    regional_house_cost = st.number_input("定年時 住宅購入費用 (万円)", 0, 20000, 4000, step=100)
     annual_home_maintenance_cost = st.number_input("老後の住宅維持費（年額・万円）", 0, 300, 50, step=5)
-    annual_retirement_insurance_cost = st.number_input("老後の公的医療保険料（国保・後期高齢者等・年額・万円）", 0, 300, 60, step=5)
+    annual_retirement_insurance_cost = st.number_input("老後の公的医療保険料（国保・後期高齢者等・年額・万円）", 0, 300, 50, step=1)
     migration_medical_cost_multiplier = st.slider("老後の医療費倍率", 1.0, 10.0, 4.0, step=0.1)
     next_year_one_time_expense = st.number_input("翌年の臨時支出（万円）", 0, 2000, 200, step=10)
 
@@ -584,7 +584,7 @@ with tab6:
 
 以下の構成で回答を出力してください：
 1. **全体の評価・総評**（この家計の強みと最大の懸念点、民間・公的保険の分担や企業型DC活用の評価）
-2. **懸念されるリスクへの対策**（保険料負担や医療イベント、60歳時の5,000万円の住宅購入費、キャッシュフローについて）
+2. **懸念されるリスクへの対策**（保険料負担や医療イベント、60歳時の4,000万円の住宅購入費、キャッシュフローについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
