@@ -71,7 +71,7 @@ st.markdown(
     """
     <div style="padding: 1rem 0; margin-bottom: 1rem;">
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ライフプランシミュレーション（企業型DC・医療保険個別管理版）
+            ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
             将来の資産形成・キャッシュフロー・教育費、企業型DC、そして民間・公的保険の個別管理を可視化します
@@ -310,7 +310,6 @@ def run_simulation(real_return_rate):
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         
-        # 民間保険料の計算（現役期と老後でそれぞれの民間保険料を切り替え・インフレ反映）
         current_private_insurance_cost = (annual_insurance_active if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
 
         if age_h < retirement_age_h or age_w < retirement_age_w:
@@ -320,7 +319,6 @@ def run_simulation(real_return_rate):
             annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated + current_private_insurance_cost) * inflation_factor
         else:
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost + current_private_insurance_cost
-            # 老後は公的医療保険料（annual_retirement_insurance_cost）も個別に追加して計算
             annual_expense = (base_expense * (0.90 if age_h >= 75 else 1.0) + general_medical_cost * migration_medical_cost_multiplier + annual_home_maintenance_cost + annual_retirement_insurance_cost) * inflation_factor
 
         if is_husband_dead:
@@ -457,7 +455,7 @@ with tab1:
     
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
-    ax1.set_title("生涯資産シミュレーション（民間・公的保険個別管理版）", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
+    ax1.set_title("生涯資産シミュレーション", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
