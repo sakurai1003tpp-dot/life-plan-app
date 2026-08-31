@@ -247,12 +247,7 @@ def get_child_living_expense_addition(c_age, course_type=None):
 # 保険料連動による保障額計算関数
 # ------------------------------------------
 def calculate_insurance_benefits(age, monthly_premium):
-    """
-    毎月の保険料（万円/月）と年齢から、保険数理モデルに基づき死亡保険金およびがん等の保障額を自動算出する
-    """
-    annual_premium = monthly_premium * 12  # 年間保険料（万円）
-    
-    # 年齢に応じた保障のレバレッジ係数（若年層ほど掛け捨てによる大きな保障、高齢になると逓減）
+    annual_premium = monthly_premium * 12
     if age < 40:
         multiplier = 45
     elif age < 50:
@@ -263,12 +258,11 @@ def calculate_insurance_benefits(age, monthly_premium):
         multiplier = 10
         
     death_benefit = annual_premium * multiplier
-    cancer_benefit = annual_premium * 15  # がん一時金などのベース保障
-    
+    cancer_benefit = annual_premium * 15
     return int(death_benefit), int(cancer_benefit)
 
 # ------------------------------------------
-# シミュレーション実行関数（保険金・病気時所得減額対応）
+# シミュレーション実行関数（保険金・死亡時反映の修正版）
 # ------------------------------------------
 def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "ideco", "net_income", "expense", "balance", 
@@ -320,7 +314,6 @@ def run_simulation(real_return_rate):
                 gross_w = base_w
         net_w = calculate_net_income(gross_w)
 
-        # 病気時の年収・手取りの0.8倍補正
         is_sick_year = (enable_medical_event and age_h == medical_event_age and not is_husband_dead)
         if is_sick_year:
             gross_h *= 0.8
@@ -341,7 +334,6 @@ def run_simulation(real_return_rate):
         total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
-        
         current_private_insurance_cost = ((monthly_insurance_active * 12) if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
 
         if age_h < retirement_age_h or age_w < retirement_age_h:
@@ -353,21 +345,20 @@ def run_simulation(real_return_rate):
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost + current_private_insurance_cost
             annual_expense = (base_expense * (0.90 if age_h >= 75 else 1.0) + general_medical_cost * migration_medical_cost_multiplier + annual_home_maintenance_cost + annual_retirement_insurance_cost) * inflation_factor
 
-        if is_husband_dead:
+        # 死亡時フラグが立った瞬間、その年は遺族生活費に補正
+        if age_h >= husband_death_age:
             annual_expense *= 0.70
 
         extra_one_time = next_year_one_time_expense if i == 1 else 0
         
-        # 毎月の保険料に連動した保障額の計算
         current_active_monthly_prem = monthly_insurance_active if age_h < retirement_age_h else (annual_insurance_retired / 12)
         dynamic_death_benefit, dynamic_cancer_benefit = calculate_insurance_benefits(age_h, current_active_monthly_prem)
 
-        # 死亡時保険金の加算（連動保障額を使用）
+        # 死亡年齢に達した年（ジャストの年）に保険金および葬儀費用等を反映
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
             sim_cash += dynamic_death_benefit * inflation_factor
 
-        # 医療保険・がん保障の統計的給付金受取額の加算（連動保障額を活用）
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
             statistical_medical_payout = (dynamic_cancer_benefit * 0.2) + (current_private_insurance_cost * 1.4 * inflation_factor)
@@ -591,10 +582,10 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（企業型DC、保険料連動型の民間・公的保険、医療費イベント・病気時所得減額など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータとシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
-        with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
+        with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
@@ -606,8 +597,7 @@ with tab6:
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 定年時住宅購入費用: {regional_house_cost}万円
-- 保険設定: 現役期民間保険料 {monthly_insurance_active}万円/月（連動保障に反映） / 老後民間保険料 {annual_insurance_retired}万円/年 / 老後公的医療保険料 {annual_retirement_insurance_cost}万円
+- 保険設定: 現役期民間保険料 {monthly_insurance_active}万円/月（連動保障・死亡保険金に反映） / 老後民間保険料 {annual_insurance_retired}万円/年
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -648,4 +638,4 @@ with tab6:
                 st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"APIの呼び出し中にエラーが発生しました（サーバー側が一時的に混雑しています。少し時間を置いて再度お試しください）: {e}")
+                st.error(f"APIの呼び出し中にエラーが発生しました: {e}")
