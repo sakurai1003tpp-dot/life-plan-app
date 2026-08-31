@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import time
+import io
 
 # ------------------------------------------
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
@@ -74,7 +75,7 @@ st.markdown(
             ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費、企業型DC、そして死亡保険金・民間保険・公的保険の個別管理を可視化します
+            将来の資産形成・キャッシュフロー・教育費、企業型DC、そして保険連動型の死亡保障・公的保険の個別管理を可視化します
         </p>
     </div>
     """,
@@ -100,12 +101,6 @@ with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", e
     retirement_age_w = st.slider("妻の退職年齢（歳）", 50, 75, 55)
     pension_start_age_h = st.slider("夫の年金受給開始年齢（歳）", 60, 75, 65)
     pension_start_age_w = st.slider("妻の年金受給開始年齢（歳）", 60, 75, 70)
-
-with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=True):
-    husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
-    death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
-    survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
-    manual_death_benefit = st.number_input("万が一の際の死亡保険金受取額 (万円)", 0, 10000, 2000, step=100)
 
 with st.sidebar.expander("💰 収入・退職金設定", expanded=False):
     gross_income_w = st.number_input("妻の現在年収 (万円)", 0, 5000, 400, step=10)
@@ -144,11 +139,18 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Fa
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
 with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
-    monthly_insurance_active = st.number_input("現役期の毎月民間保険料（医療・がん等・万円/月）", 0.0, 5.0, 1.5, step=0.1)
+    monthly_insurance_active = st.number_input("現役期の毎月民間保険料（医療・死亡等・万円/月）", 0.0, 5.0, 1.5, step=0.1)
     annual_insurance_retired = st.number_input("老後の年間民間保険料（医療・がん保険等・万円）", 0, 50, 8, step=1)
     enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
+
+# 🔽 死亡時の設定（掛け金連動型になったことを明記）
+with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=True):
+    husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
+    death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
+    survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
+    st.info(f"💡 **死亡保険金受取額**: 月額保険料（{monthly_insurance_active}万円）に連動して自動計算されます（現在設定: 約 **{int(monthly_insurance_active * 12 * 1200 / 10000):,}万円** 相当）")
 
 with st.sidebar.expander("🏠 支出・インフレ・年金連動設定", expanded=False):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
@@ -244,12 +246,16 @@ def get_child_living_expense_addition(c_age, course_type=None):
     elif c_age <= 17: return 55
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
-# 医療保険・がん保険の給付金算出用関数
 def calculate_cancer_benefit(monthly_premium):
     return int((monthly_premium * 12) * 15)
 
+# 🔽 死亡保険金を毎月の掛け金（現役期）に比例して自動計算する変数関数
+def calculate_dynamic_death_benefit(monthly_premium):
+    # 例：毎月の保険料1万円につき約800万円の死亡保障（定期保険や収入保障保険のスケールを想定）
+    return monthly_premium * 800.0
+
 # ------------------------------------------
-# シミュレーション実行関数（手動設定の死亡保険金反映版）
+# シミュレーション実行関数
 # ------------------------------------------
 def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "ideco", "net_income", "expense", "balance", 
@@ -339,11 +345,11 @@ def run_simulation(real_return_rate):
         
         current_active_monthly_prem = monthly_insurance_active if age_h < retirement_age_h else (annual_insurance_retired / 12)
         dynamic_cancer_benefit = calculate_cancer_benefit(current_active_monthly_prem)
+        dynamic_death_benefit_val = calculate_dynamic_death_benefit(monthly_insurance_active)
 
-        # 死亡年齢に達した年に、手動設定した死亡保険金をまるっと現預金に加算
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-            sim_cash += manual_death_benefit * inflation_factor
+            sim_cash += dynamic_death_benefit_val * inflation_factor
 
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
@@ -455,7 +461,7 @@ else:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------
-# タブの作成
+# タブの作成（CSVダウンロード機能を含む）
 # ------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     ["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ", "📉 資産運用シミュレーション", "🤖 Gemini AI 家計診断"]
@@ -465,7 +471,6 @@ with tab1:
     fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10 * chart_scale, 11 * chart_scale), sharex=True)
     fig1.patch.set_facecolor("#F8F9FA")
     
-    current_nominal_display = base_real_return_rate + expense_change_rate
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
     ax1.plot(base_res["age"], base_res["cash"], label="現預金", color=COLOR_GREEN, linestyle="--", linewidth=2.0)
     ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
@@ -494,6 +499,30 @@ with tab1:
         ax.set_facecolor("#FFFFFF")
     plt.tight_layout()
     st.pyplot(fig1)
+
+    st.markdown("---")
+    st.markdown("### 📥 シミュレーションデータのダウンロード")
+    st.write("ここまでの生涯シミュレーション結果（年齢ごとの資産残高、収入、支出など）をCSVファイルとしてダウンロードできます。")
+    
+    df_export = pd.DataFrame({
+        "夫の年齢": base_res["age"],
+        "総資産(万円)": base_res["wealth"],
+        "現預金(万円)": base_res["cash"],
+        "投資信託(万円)": base_res["invest"],
+        "個別株式(万円)": base_res["stock"],
+        "企業型DC(万円)": base_res["ideco"],
+        "世帯手取り収入(万円)": base_res["net_income"],
+        "総支出(万円)": base_res["expense"],
+        "年間収支(万円)": base_res["balance"]
+    })
+    csv_data = df_export.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        label="📄 シミュレーション結果をCSVでダウンロード",
+        data=csv_data,
+        file_name="life_plan_simulation.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
 
 with tab2:
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
@@ -568,13 +597,14 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（手動設定の死亡保険金受取額含む）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータ、掛け金連動の死亡保険金、およびシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
+                auto_death_ben = calculate_dynamic_death_benefit(monthly_insurance_active)
                 medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
@@ -583,7 +613,7 @@ with tab6:
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 万が一の死亡保険金設定: {manual_death_benefit}万円（{husband_death_age}歳時に受取）
+- 民間保険料（現役期）: 毎月 {monthly_insurance_active}万円 → 死亡保険金は自動連動で約 {auto_death_ben:,.0f}万円 ({husband_death_age}歳時に受取)
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -594,13 +624,13 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや手動設定された死亡保険金（{manual_death_benefit}万円）、医療費イベント、病気時の所得減額、遺族生活費移行を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや、月額保険料から連動して算出された死亡保険金（約{auto_death_ben:,.0f}万円）、医療費イベント、病気時の所得減額を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、死亡保険金の保障内容や企業型DC活用の評価）
-2. **懸念されるリスクへの対策**（保険金受け取り後のキャッシュフロー、医療イベント、60歳時の4,000万円の住宅購入費などについて）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、毎月の保険料に対する死亡保障のバランス評価）
+2. **懸念されるリスクへの対策**（保険金受け取り後のキャッシュフロー、医療イベント、老後の住宅購入費などについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
