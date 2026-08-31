@@ -329,7 +329,7 @@ def run_simulation(real_return_rate):
             net_w *= 0.8
 
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
-                                (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead)
+                                (retirement_payout_h if (age_h == retirement_age_h and not is_husband_dead) else 0)
         
         p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
