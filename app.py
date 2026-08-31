@@ -71,10 +71,10 @@ st.markdown(
     """
     <div style="padding: 1rem 0; margin-bottom: 1rem;">
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ライフプランシミュレーション（企業型DC対応版）
+            ライフプランシミュレーション（企業型DC・医療保険対応版）
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費、そして企業型DCの資産推移を可視化します
+            将来の資産形成・キャッシュフロー・教育費、企業型DC、そして病気への備えを可視化します
         </p>
     </div>
     """,
@@ -141,6 +141,13 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Tr
     base_real_return_rate = st.slider("投資信託・企業型DCの想定実質利回り (%)", 0.0, 10.0, 2.8, step=0.1)
     emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
+
+with st.sidebar.expander("🏥 医療・保険設定", expanded=True):
+    annual_insurance_active = st.number_input("現役期の年間保険料（医療・がん保険等・万円）", 0, 50, 12, step=1)
+    annual_insurance_retired = st.number_input("老後の年間保険料（万円）", 0, 50, 8, step=1)
+    enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
+    medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
+    medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
 with st.sidebar.expander("🏠 支出・インフレ・年金連動設定"):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
@@ -237,7 +244,7 @@ def get_child_living_expense_addition(c_age, course_type=None):
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 # ------------------------------------------
-# シミュレーション実行関数（企業型DC対応）
+# シミュレーション実行関数（企業型DC・保険対応）
 # ------------------------------------------
 def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "ideco", "net_income", "expense", "balance", 
@@ -306,13 +313,16 @@ def run_simulation(real_return_rate):
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         
+        # 年間保険料の計算（現役期か退職後かで切り替え、インフレ反映）
+        current_insurance_cost = (annual_insurance_active if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
+
         if age_h < retirement_age_h or age_w < retirement_age_w:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
             total_child_living = sum([get_child_living_expense_addition(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) 
                                     for n in range(child_count)])
-            annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated) * inflation_factor
+            annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated + current_insurance_cost) * inflation_factor
         else:
-            base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost
+            base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost + current_insurance_cost
             annual_expense = (base_expense * (0.90 if age_h >= 75 else 1.0) + general_medical_cost * migration_medical_cost_multiplier + annual_home_maintenance_cost + annual_retirement_insurance_cost) * inflation_factor
 
         if is_husband_dead:
@@ -321,6 +331,10 @@ def run_simulation(real_return_rate):
         extra_one_time = next_year_one_time_expense if i == 1 else 0
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
+        
+        # 指定年齢での医療・入院の臨時費用追加
+        if enable_medical_event and age_h == medical_event_age and not is_husband_dead:
+            extra_one_time += medical_event_cost * inflation_factor
 
         c_exp = [get_child_yearly_expense(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) * inflation_factor for n in range(child_count)]
         c_exp += [0] * (3 - len(c_exp))
@@ -446,7 +460,7 @@ with tab1:
     
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
-    ax1.set_title("生涯資産シミュレーション（企業型DC込）", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
+    ax1.set_title("生涯資産シミュレーション（企業型DC・保険対応）", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
@@ -540,13 +554,14 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（企業型DCや資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータとシミュレーション結果（企業型DC、保険料・医療費イベント、資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
+                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円）" if enable_medical_event else "なし"
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
 - 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳）
@@ -555,6 +570,8 @@ with tab6:
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
 - 定年時住宅購入費用: {regional_house_cost}万円
+- 保険設定: 現役期年間保険料 {annual_insurance_active}万円 / 老後年間保険料 {annual_insurance_retired}万円
+- 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
 
@@ -564,13 +581,13 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCやライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや医療保険・医療費イベントを含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、企業型DC活用の評価）
-2. **懸念されるリスクへの対策**（60歳時点の5,000万円の住宅購入費やキャッシュフロー、企業型DCの資金拘束リスクについて）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、保険や企業型DC活用の評価）
+2. **懸念されるリスクへの対策**（保険料負担や医療イベント、60歳時の5,000万円の住宅購入費、キャッシュフローについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
