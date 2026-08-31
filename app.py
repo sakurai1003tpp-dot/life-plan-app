@@ -632,29 +632,20 @@ with tab6:
 """
                 
                 response = None
-                max_retries = 3
+                max_retries = 4
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='models/gemini-3.6-flash',
                             contents=prompt,
                         )
                         break
                     except Exception as api_err:
                         err_str = str(api_err)
-                        if ("404" in err_str or "NOT_FOUND" in err_str) and attempt == 0:
-                            # 2.5-flashが使えない環境向けにgemini-3.6-flash等にフォールバック、または直接モデルを変更
-                            try:
-                                response = client.models.generate_content(
-                                    model='gemini-3.6-flash',
-                                    contents=prompt,
-                                )
-                                break
-                            except Exception:
-                                pass
-                        
-                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str) and attempt < max_retries - 1:
-                            time.sleep(2 ** attempt)
+                        # 503（UNAVAILABLE）や一時的過負荷、あるいは404の場合のリトライ処理
+                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
+                            sleep_time = 2 ** attempt  # 1秒, 2秒, 4秒...と待機時間を増やす
+                            time.sleep(sleep_time)
                             continue
                         else:
                             raise api_err
