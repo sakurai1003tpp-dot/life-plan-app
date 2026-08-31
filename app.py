@@ -104,6 +104,7 @@ with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", e
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
+    death_insurance_payout = st.number_input("死亡保険金受取額 (統計・契約に基づく受取額・万円)", 0, 10000, 2000, step=100)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
 
 with st.sidebar.expander("💰 収入・退職金設定", expanded=False):
@@ -244,7 +245,7 @@ def get_child_living_expense_addition(c_age, course_type=None):
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 # ------------------------------------------
-# シミュレーション実行関数（民間・公聴保険個別管理対応）
+# シミュレーション実行関数（保険金・病気時所得減額対応）
 # ------------------------------------------
 def run_simulation(real_return_rate):
     res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "ideco", "net_income", "expense", "balance", 
@@ -296,6 +297,14 @@ def run_simulation(real_return_rate):
                 gross_w = base_w
         net_w = calculate_net_income(gross_w)
 
+        # 病気時の年収・手取りの0.8倍補正
+        is_sick_year = (enable_medical_event and age_h == medical_event_age and not is_husband_dead)
+        if is_sick_year:
+            gross_h *= 0.8
+            net_h *= 0.8
+            gross_w *= 0.8
+            net_w *= 0.8
+
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
                                 (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead else 0)
         
@@ -312,7 +321,7 @@ def run_simulation(real_return_rate):
         
         current_private_insurance_cost = (annual_insurance_active if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
 
-        if age_h < retirement_age_h or age_w < retirement_age_w:
+        if age_h < retirement_age_h or age_w < retirement_age_h:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
             total_child_living = sum([get_child_living_expense_addition(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) 
                                     for n in range(child_count)])
@@ -325,11 +334,17 @@ def run_simulation(real_return_rate):
             annual_expense *= 0.70
 
         extra_one_time = next_year_one_time_expense if i == 1 else 0
+        
+        # 死亡時保険金の加算
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-        
-        if enable_medical_event and age_h == medical_event_age and not is_husband_dead:
+            sim_cash += death_insurance_payout * inflation_factor
+
+        # 医療保険の統計的給付金受取額の加算（掛け金から統計的ペイアウト率約70%を推定して受取額を計算）
+        if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
+            statistical_medical_payout = current_private_insurance_cost * 1.4 * inflation_factor
+            sim_cash += statistical_medical_payout
 
         c_exp = [get_child_yearly_expense(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) * inflation_factor for n in range(child_count)]
         c_exp += [0] * (3 - len(c_exp))
@@ -549,17 +564,17 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（企業型DC、民間保険・公的保険・医療費イベントなど）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータとシミュレーション結果（企業型DC、民間保険・公的保険・医療費イベント・病気時所得減額など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
-                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円）" if enable_medical_event else "なし"
+                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋統計的給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
-- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳）
+- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳、想定死亡: {husband_death_age}歳 / 死亡保険金: {death_insurance_payout}万円）
 - 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
@@ -576,13 +591,13 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや民間・公的保険の個別管理、医療費イベントを含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや民間・公的保険の個別管理、医療費イベント、病気時の所得減額・保険金受給、死亡保険金受取を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
 1. **全体の評価・総評**（この家計の強みと最大の懸念点、民間・公的保険の分担や企業型DC活用の評価）
-2. **懸念されるリスクへの対策**（保険料負担や医療イベント、60歳時の4,000万円の住宅購入費、キャッシュフローについて）
+2. **懸念されるリスクへの対策**（保険料負担や医療イベント、病気時の所得減少、60歳時の4,000万円の住宅購入費、キャッシュフローについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
