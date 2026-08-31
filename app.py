@@ -145,7 +145,6 @@ with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
-# 🔽 死亡時の設定（掛け金連動型になったことを明記）
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=True):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
@@ -249,9 +248,7 @@ def get_child_living_expense_addition(c_age, course_type=None):
 def calculate_cancer_benefit(monthly_premium):
     return int((monthly_premium * 12) * 15)
 
-# 🔽 死亡保険金を毎月の掛け金（現役期）に比例して自動計算する変数関数
 def calculate_dynamic_death_benefit(monthly_premium):
-    # 例：毎月の保険料1万円につき約800万円の死亡保障（定期保険や収入保障保険のスケールを想定）
     return monthly_premium * 800.0
 
 # ------------------------------------------
@@ -461,7 +458,7 @@ else:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------
-# タブの作成（CSVダウンロード機能を含む）
+# タブの作成
 # ------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     ["📈 資産・収支シミュレーション", "💰 収入・詳細推移", "👶 子育て費用", "📊 ポートフォリオ", "📉 資産運用シミュレーション", "🤖 Gemini AI 家計診断"]
@@ -645,7 +642,18 @@ with tab6:
                         break
                     except Exception as api_err:
                         err_str = str(api_err)
-                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower()) and attempt < max_retries - 1:
+                        if ("404" in err_str or "NOT_FOUND" in err_str) and attempt == 0:
+                            # 2.5-flashが使えない環境向けにgemini-3.6-flash等にフォールバック、または直接モデルを変更
+                            try:
+                                response = client.models.generate_content(
+                                    model='gemini-3.6-flash',
+                                    contents=prompt,
+                                )
+                                break
+                            except Exception:
+                                pass
+                        
+                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str) and attempt < max_retries - 1:
                             time.sleep(2 ** attempt)
                             continue
                         else:
