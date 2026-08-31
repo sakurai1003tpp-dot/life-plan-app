@@ -45,10 +45,7 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-    /* 全体の背景とフォント */
     .main { background-color: #F8F9FA; }
-    
-    /* メトリックカードのモダン化 */
     .metric-card {
         background-color: #FFFFFF;
         border: 1px solid #E5E7EB;
@@ -63,8 +60,6 @@ st.markdown(
     }
     .metric-title { font-size: 0.85rem; color: #6B7280; font-weight: 600; margin-bottom: 6px; }
     .metric-value { font-size: 1.5rem; color: #111827; font-weight: 700; }
-    
-    /* ヘッダーのスタイル調整 */
     .stApp header { background-color: transparent; }
 </style>
 """,
@@ -76,10 +71,10 @@ st.markdown(
     """
     <div style="padding: 1rem 0; margin-bottom: 1rem;">
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin-bottom: 4px;">
-            ライフプランシミュレーション
+            ライフプランシミュレーション（企業型DC対応版）
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費を可視化し、あなたに最適なライフプランを提案します
+            将来の資産形成・キャッシュフロー・教育費、そして企業型DCの資産推移を可視化します
         </p>
     </div>
     """,
@@ -136,11 +131,14 @@ with st.sidebar.expander("👶 子ども・育休設定"):
             f"第{i}子の進路", list(course_labels.keys()), format_func=lambda x: course_labels[x], index=0 if i==1 else 1, key=f"course_{i}"
         )
 
-with st.sidebar.expander("📈 資産・運用設定"):
+with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=True):
     current_cash = st.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
     current_investment = st.number_input("現在の投資信託 (万円)", 0, 50000, 1300, step=50)
     current_stock = st.number_input("現在の株式 (万円)", 0, 50000, 130, step=10)
-    base_real_return_rate = st.slider("投資信託の想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
+    current_ideco = st.number_input("現在の企業型DC資産残高 (万円)", 0, 20000, 78, step=1)
+    ideco_monthly_contribution = st.number_input("企業型DC 毎月の掛金 (万円/月)", 0.0, 7.0, 1.0, step=0.5)
+    ideco_receive_age = st.slider("企業型DC 受給開始年齢（歳）", 60, 75, 60)
+    base_real_return_rate = st.slider("投資信託・企業型DCの想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
     emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
@@ -239,16 +237,17 @@ def get_child_living_expense_addition(c_age, course_type=None):
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 # ------------------------------------------
-# シミュレーション実行関数
+# シミュレーション実行関数（企業型DC対応）
 # ------------------------------------------
 def run_simulation(real_return_rate):
-    res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "net_income", "expense", "balance", 
-                         "child1", "child2", "child3", "child_total", "cash_ratio", "invest_ratio", "stock_ratio",
+    res = {k: [] for k in ["age", "wealth", "cash", "invest", "stock", "ideco", "net_income", "expense", "balance", 
+                         "child1", "child2", "child3", "child_total", "cash_ratio", "invest_ratio", "stock_ratio", "ideco_ratio",
                          "h_gross", "w_gross", "p_gross", "hh_gross", "h_net", "w_net", "p_net", "hh_net"]}
     
     sim_cash = current_cash
     sim_investment = current_investment
     sim_stock = current_stock
+    sim_ideco = current_ideco
     asset_depletion_age = None
     
     effective_pension_rate = (expense_change_rate * pension_indexation_rate) / 100.0
@@ -261,9 +260,25 @@ def run_simulation(real_return_rate):
 
         current_nominal_return_rate = real_return_rate + expense_change_rate
 
+        # 企業型DCの拠出期間（60歳未満かつ夫が生存している場合）
+        annual_ideco_contribution = 0
+        if age_h < 60 and not is_husband_dead:
+            annual_ideco_contribution = ideco_monthly_contribution * 12
+
         if i > 0:
             sim_investment *= (1 + current_nominal_return_rate / 100)
             sim_stock *= (1 + stock_return_rate / 100)
+            sim_ideco *= (1 + current_nominal_return_rate / 100)
+        
+        # 企業型DCへの年間掛金を追加（掛け金分をキャッシュから控除：マッチング等の自己負担分またはキャッシュフロー内積立を想定）
+        sim_ideco += annual_ideco_contribution
+        sim_cash -= annual_ideco_contribution
+
+        # 受給開始年齢に到達した年に全額現預金に移行するモデル
+        if age_h == ideco_receive_age and sim_ideco > 0:
+            sim_cash += sim_ideco
+            sim_ideco = 0
+
         annual_dividend = (sim_stock * (stock_dividend_yield / 100)) * 0.79685 if sim_stock > 0 else 0
 
         gross_h = 0 if is_husband_dead else calculate_husband_gross_income(age_h)
@@ -341,7 +356,7 @@ def run_simulation(real_return_rate):
             excess = sim_cash - max_cash_limit
             sim_cash = max_cash_limit; sim_investment += excess
 
-        total_wealth = sim_cash + sim_investment + sim_stock
+        total_wealth = sim_cash + sim_investment + sim_stock + sim_ideco
         if total_wealth < 0 and asset_depletion_age is None:
             asset_depletion_age = age_h
 
@@ -350,6 +365,7 @@ def run_simulation(real_return_rate):
         res["cash"].append(sim_cash)
         res["invest"].append(sim_investment)
         res["stock"].append(sim_stock)
+        res["ideco"].append(sim_ideco)
         res["net_income"].append(pure_annual_income)
         res["expense"].append(pure_total_expense)
         res["balance"].append(pure_annual_balance)
@@ -360,6 +376,7 @@ def run_simulation(real_return_rate):
         res["cash_ratio"].append((sim_cash/total_wealth)*100 if total_wealth>0 else 100)
         res["invest_ratio"].append((sim_investment/total_wealth)*100 if total_wealth>0 else 0)
         res["stock_ratio"].append((sim_stock/total_wealth)*100 if total_wealth>0 else 0)
+        res["ideco_ratio"].append((sim_ideco/total_wealth)*100 if total_wealth>0 else 0)
         res["h_gross"].append(gross_h)
         res["w_gross"].append(gross_w)
         res["p_gross"].append(current_pension_gross)
@@ -377,14 +394,14 @@ base_res = run_simulation(base_real_return_rate)
 # ------------------------------------------
 # メトリクスカードとアラート
 # ------------------------------------------
-initial_wealth = current_cash + current_investment + current_stock
+initial_wealth = current_cash + current_investment + current_stock + current_ideco
 peak_wealth = max(base_res["wealth"])
 idx_80 = base_res["age"].index(current_age_h + (80 - current_age_h)) if (current_age_h + (80 - current_age_h)) in base_res["age"] else -1
 wealth_at_80 = base_res["wealth"][idx_80]
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産（企業型DC込）</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
 with col2:
     st.markdown(f'<div class="metric-card"><div class="metric-title">資産ピーク時（{base_res["age"][base_res["wealth"].index(peak_wealth)]}歳）</div><div class="metric-value">{peak_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
 with col3:
@@ -423,12 +440,13 @@ with tab1:
     current_nominal_display = base_real_return_rate + expense_change_rate
     ax1.plot(base_res["age"], base_res["wealth"], label="総資産", color=COLOR_PRIMARY, linewidth=3.0)
     ax1.plot(base_res["age"], base_res["cash"], label="現預金", color=COLOR_GREEN, linestyle="--", linewidth=2.0)
-    ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%＋インフレ{expense_change_rate}% ＝名目{current_nominal_display:.1f}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
-    ax1.plot(base_res["age"], base_res["stock"], label=f"個別株式（固定利回り {stock_return_rate}%）", color=COLOR_PURPLE, linestyle=":", linewidth=2.0)
+    ax1.plot(base_res["age"], base_res["invest"], label=f"投資信託（実質{base_real_return_rate}%）", color=COLOR_SECONDARY, linestyle="--", linewidth=2.0)
+    ax1.plot(base_res["age"], base_res["stock"], label=f"個別株式（固定 {stock_return_rate}%）", color=COLOR_PURPLE, linestyle=":", linewidth=2.0)
+    ax1.plot(base_res["age"], base_res["ideco"], label=f"企業型DC資産（{ideco_monthly_contribution}万円/月）", color=COLOR_ACCENT, linestyle="-.", linewidth=2.0)
     
     ax1.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax1.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
-    ax1.set_title("生涯資産シミュレーション", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
+    ax1.set_title("生涯資産シミュレーション（企業型DC込）", fontsize=13, fontweight="bold", color=COLOR_DARK, pad=12)
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
@@ -485,8 +503,9 @@ with tab4:
     fig4, ax4 = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig4.patch.set_facecolor("#F8F9FA")
     ax4.set_facecolor("#FFFFFF")
-    ax4.stackplot(base_res["age"], base_res["cash_ratio"], base_res["invest_ratio"], base_res["stock_ratio"], labels=["現預金", "投資信託", "株式"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1"], alpha=0.85)
-    ax4.set_title("資産配分比率の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
+    ax4.stackplot(base_res["age"], base_res["cash_ratio"], base_res["invest_ratio"], base_res["stock_ratio"], base_res["ideco_ratio"], 
+                  labels=["現預金", "投資信託", "株式", "企業型DC"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1", "#FFD93D"], alpha=0.85)
+    ax4.set_title("資産配分比率の推移（企業型DC含む）", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax4.set_ylim(0, 100)
     ax4.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax4.spines["top"].set_visible(False); ax4.spines["right"].set_visible(False)
@@ -521,12 +540,11 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータとシミュレーション結果（企業型DCや資産推移・破綻年齢など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
             try:
-                # 最新モデル（gemini-3.6-flash）を指定
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 summary_text = f"""
@@ -534,9 +552,10 @@ with tab6:
 - 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳）
 - 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
 - 子供の人数: {child_count}人
-- 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 (合計: {initial_wealth}万円)
+- 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
+- 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
-- 投資信託想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
+- 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
 
 【シミュレーション結果サマリー】
 - 資産ピーク時: {peak_wealth:,.0f}万円
@@ -544,13 +563,13 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下のライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCやライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点）
-2. **懸念されるリスクへの対策**（破綻リスクや資産配分のバランス、教育費・老後資金について）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、企業型DC活用の評価）
+2. **懸念されるリスクへの対策**（60歳までのキャッシュフローや教育費、企業型DCの資金拘束リスクについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
@@ -565,10 +584,9 @@ with tab6:
                         )
                         break
                     except Exception as api_err:
-                        # 503や過負荷関連のエラーが含まれる場合、少し待って再試行
                         err_str = str(api_err)
                         if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower()) and attempt < max_retries - 1:
-                            time.sleep(2 ** attempt) # 1秒、2秒と待機を増やす
+                            time.sleep(2 ** attempt)
                             continue
                         else:
                             raise api_err
