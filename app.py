@@ -74,7 +74,7 @@ st.markdown(
             ライフプランシミュレーション
         </h1>
         <p style="font-size: 0.95rem; color: #4B5563; font-weight: 400;">
-            将来の資産形成・キャッシュフロー・教育費、企業型DC、そして民間・公的保険の個別管理を可視化します
+            将来の資産形成・キャッシュフロー・教育費、企業型DC、そして毎月の保険料に連動する民間・公的保険の個別管理を可視化します
         </p>
     </div>
     """,
@@ -104,7 +104,6 @@ with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", e
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
-    death_insurance_payout = st.number_input("死亡保険金受取額 (統計・契約に基づく受取額・万円)", 0, 10000, 2000, step=100)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
 
 with st.sidebar.expander("💰 収入・退職金設定", expanded=False):
@@ -144,7 +143,7 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Fa
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
 with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
-    annual_insurance_active = st.number_input("現役期の年間民間保険料（医療・がん保険等・万円）", 0, 50, 10, step=1)
+    monthly_insurance_active = st.number_input("現役期の毎月民間保険料（医療・がん・死亡保険等・万円/月）", 0.0, 5.0, 1.5, step=0.1)
     annual_insurance_retired = st.number_input("老後の年間民間保険料（医療・がん保険等・万円）", 0, 50, 8, step=1)
     enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
@@ -245,6 +244,30 @@ def get_child_living_expense_addition(c_age, course_type=None):
     else: return 75.34 if course_type == "ALL_PUBLIC" else 63.15
 
 # ------------------------------------------
+# 保険料連動による保障額計算関数
+# ------------------------------------------
+def calculate_insurance_benefits(age, monthly_premium):
+    """
+    毎月の保険料（万円/月）と年齢から、保険数理モデルに基づき死亡保険金およびがん等の保障額を自動算出する
+    """
+    annual_premium = monthly_premium * 12  # 年間保険料（万円）
+    
+    # 年齢に応じた保障のレバレッジ係数（若年層ほど掛け捨てによる大きな保障、高齢になると逓減）
+    if age < 40:
+        multiplier = 45
+    elif age < 50:
+        multiplier = 35
+    elif age < 60:
+        multiplier = 20
+    else:
+        multiplier = 10
+        
+    death_benefit = annual_premium * multiplier
+    cancer_benefit = annual_premium * 15  # がん一時金などのベース保障
+    
+    return int(death_benefit), int(cancer_benefit)
+
+# ------------------------------------------
 # シミュレーション実行関数（保険金・病気時所得減額対応）
 # ------------------------------------------
 def run_simulation(real_return_rate):
@@ -306,7 +329,7 @@ def run_simulation(real_return_rate):
             net_w *= 0.8
 
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
-                                (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead else 0)
+                                (retirement_payout_h if age_h == retirement_age_h and not is_husband_dead)
         
         p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
@@ -319,7 +342,7 @@ def run_simulation(real_return_rate):
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         
-        current_private_insurance_cost = (annual_insurance_active if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
+        current_private_insurance_cost = ((monthly_insurance_active * 12) if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
 
         if age_h < retirement_age_h or age_w < retirement_age_h:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
@@ -335,15 +358,19 @@ def run_simulation(real_return_rate):
 
         extra_one_time = next_year_one_time_expense if i == 1 else 0
         
-        # 死亡時保険金の加算
+        # 毎月の保険料に連動した保障額の計算
+        current_active_monthly_prem = monthly_insurance_active if age_h < retirement_age_h else (annual_insurance_retired / 12)
+        dynamic_death_benefit, dynamic_cancer_benefit = calculate_insurance_benefits(age_h, current_active_monthly_prem)
+
+        # 死亡時保険金の加算（連動保障額を使用）
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-            sim_cash += death_insurance_payout * inflation_factor
+            sim_cash += dynamic_death_benefit * inflation_factor
 
-        # 医療保険の統計的給付金受取額の加算（掛け金から統計的ペイアウト率約70%を推定して受取額を計算）
+        # 医療保険・がん保障の統計的給付金受取額の加算（連動保障額を活用）
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
-            statistical_medical_payout = current_private_insurance_cost * 1.4 * inflation_factor
+            statistical_medical_payout = (dynamic_cancer_benefit * 0.2) + (current_private_insurance_cost * 1.4 * inflation_factor)
             sim_cash += statistical_medical_payout
 
         c_exp = [get_child_yearly_expense(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) * inflation_factor for n in range(child_count)]
@@ -564,23 +591,23 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータとシミュレーション結果（企業型DC、民間保険・公的保険・医療費イベント・病気時所得減額など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータとシミュレーション結果（企業型DC、保険料連動型の民間・公的保険、医療費イベント・病気時所得減額など）をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中...（混雑時は自動で再試行します）"):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
-                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋統計的給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
+                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋連動保障給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
-- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳、想定死亡: {husband_death_age}歳 / 死亡保険金: {death_insurance_payout}万円）
+- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳、想定死亡: {husband_death_age}歳）
 - 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
 - 定年時住宅購入費用: {regional_house_cost}万円
-- 保険設定: 現役期民間保険料 {annual_insurance_active}万円 / 老後民間保険料 {annual_insurance_retired}万円 / 老後公的医療保険料 {annual_retirement_insurance_cost}万円
+- 保険設定: 現役期民間保険料 {monthly_insurance_active}万円/月（連動保障に反映） / 老後民間保険料 {annual_insurance_retired}万円/年 / 老後公的医療保険料 {annual_retirement_insurance_cost}万円
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -591,12 +618,12 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや民間・公的保険の個別管理、医療費イベント、病気時の所得減額・保険金受給、死亡保険金受取を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや保険料連動型の民間・公的保険管理、医療費イベント、病気時の所得減額・連動保険金受給、死亡保険金受取を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、民間・公的保険の分担や企業型DC活用の評価）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、保険料に対する保障内容や企業型DC活用の評価）
 2. **懸念されるリスクへの対策**（保険料負担や医療イベント、病気時の所得減少、60歳時の4,000万円の住宅購入費、キャッシュフローについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
@@ -606,7 +633,7 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-3.6-flash',
+                            model='gemini-2.5-flash',
                             contents=prompt,
                         )
                         break
