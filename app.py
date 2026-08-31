@@ -138,7 +138,7 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Tr
     current_ideco = st.number_input("現在の企業型DC資産残高 (万円)", 0, 20000, 78, step=1)
     ideco_monthly_contribution = st.number_input("企業型DC 毎月の掛金 (万円/月)", 0.0, 7.0, 1.0, step=0.5)
     ideco_receive_age = st.slider("企業型DC 受給開始年齢（歳）", 60, 75, 60)
-    base_real_return_rate = st.slider("投資信託・企業型DCの想定実質利回り (%)", 0.0, 10.0, 3.1, step=0.1)
+    base_real_return_rate = st.slider("投資信託・企業型DCの想定実質利回り (%)", 0.0, 10.0, 2.8, step=0.1)
     emergency_fund_months = st.slider("緊急資金の目安（生活費の月数）", 0, 24, 6)
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
@@ -270,7 +270,7 @@ def run_simulation(real_return_rate):
             sim_stock *= (1 + stock_return_rate / 100)
             sim_ideco *= (1 + current_nominal_return_rate / 100)
         
-        # 企業型DCへの年間掛金を追加（掛け金分をキャッシュから控除：マッチング等の自己負担分またはキャッシュフロー内積立を想定）
+        # 企業型DCへの年間掛金を追加（掛け金分をキャッシュから控除）
         sim_ideco += annual_ideco_contribution
         sim_cash -= annual_ideco_contribution
 
@@ -514,7 +514,7 @@ with tab4:
 
 with tab5:
     st.markdown("### 📊 運用利回りのシナリオ別比較")
-    st.write(f"インフレ率（{expense_change_rate}%）に対する実質利回りのシナリオ（標準：{base_real_return_rate}%、保守的：{max(0, base_real_return_rate-1.5)}%、積極的：{base_real_return_rate+1.5}%）で総資産の推移を比較します。")
+    st.write(f"インフレ率（{expense_change_rate}%）に対する実質利回りのシナリオ（標準：{base_real_return_rate}%、保守的：{max(0, base_real_return_rate-1.5):.1f}%、積極的：{base_real_return_rate+1.5:.1f}%）で総資産の推移を比較します。")
     
     res_weak = run_simulation(max(0, base_real_return_rate - 1.5))
     res_strong = run_simulation(base_real_return_rate + 1.5)
@@ -523,8 +523,8 @@ with tab5:
     fig5.patch.set_facecolor("#F8F9FA")
     ax5.set_facecolor("#FFFFFF")
     ax5.plot(base_res["age"], base_res["wealth"], label=f"標準実質利回り ({base_real_return_rate}%)", color=COLOR_PRIMARY, linewidth=3.0)
-    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_return_rate-1.5)}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
-    ax5.plot(res_strong["age"], res_strong["wealth"], label=f"積極的実質利回り ({base_real_return_rate+1.5}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
+    ax5.plot(res_weak["age"], res_weak["wealth"], label=f"保守的実質利回り ({max(0, base_real_return_rate-1.5):.1f}%)", color=COLOR_SECONDARY, linewidth=2.0, linestyle="--")
+    ax5.plot(res_strong["age"], res_strong["wealth"], label=f"積極的実質利回り ({base_real_return_rate+1.5:.1f}%)", color=COLOR_GREEN, linewidth=2.0, linestyle="--")
     
     ax5.axvline(retirement_age_h, color="#FF869E", linestyle=":", label="夫の退職")
     ax5.set_title("利回りシナリオ別の総資産推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
@@ -573,7 +573,6 @@ with tab6:
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
                 
-                # 503エラー（一時的高負荷）対策のリトライ処理（最大3回）
                 response = None
                 max_retries = 3
                 for attempt in range(max_retries):
