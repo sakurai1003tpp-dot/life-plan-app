@@ -93,7 +93,7 @@ chart_scale = st.sidebar.slider("グラフの表示倍率", 0.5, 1.0, 1.0, step=
 
 st.sidebar.markdown("---")
 
-with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定", expanded=True):
+with st.sidebar.expander("👨‍👩‍👧‍👦 家族・働き方設定"):
     current_age_h = st.slider("夫の現在の年齢（歳）", 20, 60, 29)
     current_age_w = st.slider("妻の現在の年齢（歳）", 20, 60, 30)
     retirement_age_h = st.slider("夫の退職年齢（歳）", 50, 75, 65)
