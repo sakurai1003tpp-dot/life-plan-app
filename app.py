@@ -40,7 +40,7 @@ COLOR_DARK = "#2B2D42"
 st.set_page_config(
     page_title="ライフプランシミュレーション",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 st.markdown(
