@@ -7,6 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 import io
+import os
 
 # ------------------------------------------
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
@@ -249,7 +250,6 @@ def calculate_cancer_benefit(monthly_premium):
     return int((monthly_premium * 12) * 15)
 
 def calculate_dynamic_death_benefit(monthly_premium):
-    # 二人分保険料から算出される夫の死亡保険金（半分が入る設計）
     return (monthly_premium * 800.0) * 0.5
 
 # ------------------------------------------
@@ -321,11 +321,9 @@ def run_simulation(real_return_rate):
         current_pension_gross = p_gross_h + p_gross_w
         current_pension_net = current_pension_gross
         
-        # 保険金（死亡時）の収入計上処理
         current_dynamic_death_benefit_val = calculate_dynamic_death_benefit(monthly_insurance_active) if age_h == husband_death_age else 0
         inflated_death_benefit = current_dynamic_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
-        # 手取り収入および額面収入に死亡保険金を合算（保険金は非課税としてそのまま手取りへ反映）
         pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit
         total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit
 
@@ -335,7 +333,7 @@ def run_simulation(real_return_rate):
         if age_h < retirement_age_h or age_w < retirement_age_h:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
             total_child_living = sum([get_child_living_expense_addition(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) 
-                                      for n in range(child_count)])
+                                    for n in range(child_count)])
             annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated + current_private_insurance_cost) * inflation_factor
         else:
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost + current_private_insurance_cost
@@ -351,7 +349,7 @@ def run_simulation(real_return_rate):
 
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-            sim_cash += inflated_death_benefit  # 現金資産へも保険金をプラス
+            sim_cash += inflated_death_benefit 
 
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
@@ -373,9 +371,12 @@ def run_simulation(real_return_rate):
             sim_stock = 0
             needed = (regional_house_cost * inflation_factor) - sim_cash
             if needed > 0:
-                sale = min(needed, sim_investment)
-                sim_investment -= sale
-                sim_cash += sale
+                # 投資信託の売却益に対する譲渡益課税（約20.315%）を簡易的に考慮
+                gross_sale = min(needed / 0.8, sim_investment)
+                tax_amount = (gross_sale * 0.5) * 0.20315 # 利益率を50%と仮定
+                net_sale = gross_sale - tax_amount
+                sim_investment -= gross_sale
+                sim_cash += net_sale
             sim_cash -= (regional_house_cost * inflation_factor)
 
         if sim_cash < min_cash_reserve:
@@ -563,7 +564,7 @@ with tab4:
     fig4.patch.set_facecolor("#F8F9FA")
     ax4.set_facecolor("#FFFFFF")
     ax4.stackplot(base_res["age"], base_res["cash_ratio"], base_res["invest_ratio"], base_res["stock_ratio"], base_res["ideco_ratio"], 
-                  labels=["現預金", "投資信託", "株式", "企業型DC"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1", "#FFD93D"], alpha=0.85)
+                 labels=["現預金", "投資信託", "株式", "企業型DC"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1", "#FFD93D"], alpha=0.85)
     ax4.set_title("資産配分比率の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax4.set_ylim(0, 100)
     ax4.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
@@ -604,7 +605,9 @@ with tab6:
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
-                client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
+                # APIキーは st.secrets から安全に取得（未設定時は環境変数を使用）
+                api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+                client = genai.Client(api_key=api_key)
                 
                 auto_death_ben = calculate_dynamic_death_benefit(monthly_insurance_active)
                 medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
@@ -641,19 +644,22 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='models/gemini-2.5-flash',
+                            model='gemini-2.5-flash',
                             contents=prompt,
                         )
                         break
                     except Exception as api_err:
                         err_str = str(api_err)
                         if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
-                            sleep_time = 2 ** attempt
-                            time.sleep(sleep_time)
+                            time.sleep(2 ** attempt)
                             continue
                         else:
                             raise api_err
+                
+                if response:
+                    st.markdown(response.text)
+                else:
+                    st.warning("AIからの応答を取得できませんでした。")
 
-                st.markdown(response.text)
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
