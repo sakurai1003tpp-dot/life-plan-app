@@ -7,7 +7,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 import io
-import os
 
 # ------------------------------------------
 # グラフの基本設定（Streamlit Cloudでも日本語を表示）
@@ -371,9 +370,8 @@ def run_simulation(real_return_rate):
             sim_stock = 0
             needed = (regional_house_cost * inflation_factor) - sim_cash
             if needed > 0:
-                # 投資信託の売却益に対する譲渡益課税（約20.315%）を簡易的に考慮
                 gross_sale = min(needed / 0.8, sim_investment)
-                tax_amount = (gross_sale * 0.5) * 0.20315 # 利益率を50%と仮定
+                tax_amount = (gross_sale * 0.5) * 0.20315
                 net_sale = gross_sale - tax_amount
                 sim_investment -= gross_sale
                 sim_cash += net_sale
@@ -605,9 +603,7 @@ with tab6:
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
-                # APIキーは st.secrets から安全に取得（未設定時は環境変数を使用）
-                api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
-                client = genai.Client(api_key=api_key)
+                client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 auto_death_ben = calculate_dynamic_death_benefit(monthly_insurance_active)
                 medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
@@ -644,7 +640,7 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='models/gemini-2.5-flash',
                             contents=prompt,
                         )
                         break
