@@ -145,7 +145,7 @@ with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
-with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=True):
+with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
