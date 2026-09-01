@@ -640,7 +640,7 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='models/gemini-2.5-flash',
+                            model='models/gemini-3.6-flash',
                             contents=prompt,
                         )
                         break
