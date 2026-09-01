@@ -139,7 +139,7 @@ with st.sidebar.expander("📈 資産・企業型DC・運用設定", expanded=Fa
     max_cash_limit = st.number_input("現預金の保有上限 (万円)", 100, 5000, 1000, step=50)
 
 with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
-    monthly_insurance_active = st.number_input("現役期の毎月民間保険料（医療・死亡等・万円/月）", 0.0, 5.0, 1.5, step=0.1)
+    monthly_insurance_active = st.number_input("現役期の毎月民間保険料（二人分・医療・死亡等・万円/月）", 0.0, 5.0, 1.5, step=0.1)
     annual_insurance_retired = st.number_input("老後の年間民間保険料（医療・がん保険等・万円）", 0, 50, 8, step=1)
     enable_medical_event = st.checkbox("特定の年齢で大きな病気（入院・手術）を想定する", value=True)
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
@@ -149,7 +149,7 @@ with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", ex
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
-    st.info(f"💡 **死亡保険金受取額**: 月額保険料（{monthly_insurance_active}万円）に連動して自動計算されます（現在設定: 約 **{int(monthly_insurance_active * 12 * 1200 / 10000):,}万円** 相当）")
+    st.info(f"💡 **死亡保険金受取額**: 二人分の月額保険料（{monthly_insurance_active}万円）のうち夫の保障割合等を考慮し、算出される保険金の半分（約 **{int(monthly_insurance_active * 12 * 800 * 0.5 / 10000):,}万円** 相当）が受給される設計として反映されます。")
 
 with st.sidebar.expander("🏠 支出・インフレ・年金連動設定", expanded=False):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
@@ -249,7 +249,8 @@ def calculate_cancer_benefit(monthly_premium):
     return int((monthly_premium * 12) * 15)
 
 def calculate_dynamic_death_benefit(monthly_premium):
-    return monthly_premium * 800.0
+    # 二人分保険料から算出される夫の死亡保険金（半分が入る設計）
+    return (monthly_premium * 800.0) * 0.5
 
 # ------------------------------------------
 # シミュレーション実行関数
@@ -320,8 +321,13 @@ def run_simulation(real_return_rate):
         current_pension_gross = p_gross_h + p_gross_w
         current_pension_net = current_pension_gross
         
-        pure_annual_income = net_h + net_w + current_pension_net + annual_dividend
-        total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend
+        # 保険金（死亡時）の収入計上処理
+        current_dynamic_death_benefit_val = calculate_dynamic_death_benefit(monthly_insurance_active) if age_h == husband_death_age else 0
+        inflated_death_benefit = current_dynamic_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
+
+        # 手取り収入および額面収入に死亡保険金を合算（保険金は非課税としてそのまま手取りへ反映）
+        pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit
+        total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         current_private_insurance_cost = ((monthly_insurance_active * 12) if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
@@ -329,7 +335,7 @@ def run_simulation(real_return_rate):
         if age_h < retirement_age_h or age_w < retirement_age_h:
             current_housing = housing_expenses_base + (housing_increase_on_child if (child_count > 0 and age_h >= first_birth_age_h) else 0)
             total_child_living = sum([get_child_living_expense_addition(age_h - first_birth_age_h - n*birth_interval, child_courses.get(n+1)) 
-                                    for n in range(child_count)])
+                                      for n in range(child_count)])
             annual_expense = (living_expenses + total_child_living + current_housing + annual_travel_cost + general_medical_cost + annual_social_cost + annual_car_cost_inflated + current_private_insurance_cost) * inflation_factor
         else:
             base_expense = (living_expenses * migration_living_expense_ratio) + migration_housing_expenses + annual_car_cost_inflated + annual_travel_cost + annual_social_cost + current_private_insurance_cost
@@ -342,11 +348,10 @@ def run_simulation(real_return_rate):
         
         current_active_monthly_prem = monthly_insurance_active if age_h < retirement_age_h else (annual_insurance_retired / 12)
         dynamic_cancer_benefit = calculate_cancer_benefit(current_active_monthly_prem)
-        dynamic_death_benefit_val = calculate_dynamic_death_benefit(monthly_insurance_active)
 
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-            sim_cash += dynamic_death_benefit_val * inflation_factor
+            sim_cash += inflated_death_benefit  # 現金資産へも保険金をプラス
 
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
@@ -480,7 +485,7 @@ with tab1:
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
-    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入", color=COLOR_SECONDARY, linewidth=2.2)
+    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入（保険金込み）", color=COLOR_SECONDARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["expense"], label="総支出", color=COLOR_PRIMARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["balance"], label="年間収支", color=COLOR_DARK, linewidth=1.8, linestyle="-.")
     ax2.fill_between(base_res["age"], base_res["balance"], 0, where=[b >= 0 for b in base_res["balance"]], color=COLOR_GREEN, alpha=0.2)
@@ -525,8 +530,8 @@ with tab2:
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig2.patch.set_facecolor("#F8F9FA")
     ax_n.set_facecolor("#FFFFFF")
-    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入", color=COLOR_PRIMARY, linewidth=2.5)
-    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
+    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入（保険金込み）", color=COLOR_PRIMARY, linewidth=2.5)
+    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入（保険金込み）", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
     ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り", color=COLOR_SECONDARY, linestyle=":")
     ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り", color=COLOR_ACCENT, linestyle=":")
     ax_n.plot(base_res["age"], base_res["p_net"], label="年金（額面＝手取り）", color=COLOR_PURPLE, linestyle="-.")
@@ -594,7 +599,7 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータ、掛け金連動の死亡保険金、およびシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のパラメータ、二人分保険料から算出される死亡保険金、およびシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
@@ -610,7 +615,7 @@ with tab6:
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 民間保険料（現役期）: 毎月 {monthly_insurance_active}万円 → 死亡保険金は自動連動で約 {auto_death_ben:,.0f}万円 ({husband_death_age}歳時に受取)
+- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 → 死亡保険金は約 {auto_death_ben:,.0f}万円 ({husband_death_age}歳時に受取・収入グラフに反映)
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -621,12 +626,12 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。以下の企業型DCや、月額保険料から連動して算出された死亡保険金（約{auto_death_ben:,.0f}万円）、医療費イベント、病気時の所得減額を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。二人分の保険料負担に対する死亡保険金（約{auto_death_ben:,.0f}万円）の収入への反映や、医療費イベント、病気時の所得減額を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、毎月の保険料に対する死亡保障のバランス評価）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、二人分の保険料に対する保障のバランス評価）
 2. **懸念されるリスクへの対策**（保険金受け取り後のキャッシュフロー、医療イベント、老後の住宅購入費などについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
@@ -636,21 +641,19 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='models/gemini-3.6-flash',
+                            model='models/gemini-2.5-flash',
                             contents=prompt,
                         )
                         break
                     except Exception as api_err:
                         err_str = str(api_err)
-                        # 503（UNAVAILABLE）や一時的過負荷、あるいは404の場合のリトライ処理
                         if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
-                            sleep_time = 2 ** attempt  # 1秒, 2秒, 4秒...と待機時間を増やす
+                            sleep_time = 2 ** attempt
                             time.sleep(sleep_time)
                             continue
                         else:
                             raise api_err
 
-                st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"APIの呼び出し中にエラーが発生しました: {e}")
+                st.error(f"エラーが発生しました: {e}")
