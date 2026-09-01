@@ -437,7 +437,7 @@ wealth_at_80 = base_res["wealth"][idx_80]
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産（企業型DC込）</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card"><div class="metric-title">現在の総資産</div><div class="metric-value">{initial_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
 with col2:
     st.markdown(f'<div class="metric-card"><div class="metric-title">資産ピーク時（{base_res["age"][base_res["wealth"].index(peak_wealth)]}歳）</div><div class="metric-value">{peak_wealth:,.0f} 万円</div></div>', unsafe_allow_html=True)
 with col3:
@@ -530,11 +530,11 @@ with tab2:
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig2.patch.set_facecolor("#F8F9FA")
     ax_n.set_facecolor("#FFFFFF")
-    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入（保険金込み）", color=COLOR_PRIMARY, linewidth=2.5)
-    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入（保険金込み）", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
+    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入", color=COLOR_PRIMARY, linewidth=2.5)
+    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
     ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り", color=COLOR_SECONDARY, linestyle=":")
     ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り", color=COLOR_ACCENT, linestyle=":")
-    ax_n.plot(base_res["age"], base_res["p_net"], label="年金（額面＝手取り）", color=COLOR_PURPLE, linestyle="-.")
+    ax_n.plot(base_res["age"], base_res["p_net"], label="年金", color=COLOR_PURPLE, linestyle="-.")
     ax_n.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax_n.set_title("収入（額面・手取り）の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax_n.legend(loc="upper right", frameon=True, facecolor="#FFFFFF", edgecolor="none")
@@ -564,7 +564,7 @@ with tab4:
     ax4.set_facecolor("#FFFFFF")
     ax4.stackplot(base_res["age"], base_res["cash_ratio"], base_res["invest_ratio"], base_res["stock_ratio"], base_res["ideco_ratio"], 
                   labels=["現預金", "投資信託", "株式", "企業型DC"], colors=["#B8F2E6", "#FFAAA6", "#DFCCF1", "#FFD93D"], alpha=0.85)
-    ax4.set_title("資産配分比率の推移（企業型DC含む）", fontsize=13, fontweight="bold", color=COLOR_DARK)
+    ax4.set_title("資産配分比率の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
     ax4.set_ylim(0, 100)
     ax4.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax4.spines["top"].set_visible(False); ax4.spines["right"].set_visible(False)
