@@ -40,7 +40,7 @@ COLOR_NISA = "#20B2AA"  # 新NISA用カラー
 # 税率・制度定数
 TAX_RATE_TAXABLE = 0.20315  # 特定口座等の課税率
 NISA_ANNUAL_LIMIT = 360.0    # 新NISA年間投資上限（万円）
-NISA_LIFETIME_LIMIT = 1800.0 # 新NISA生涯投資枠上限（万円）
+NISA_LIFETIME_LIMIT = 1800.0 # 新NISA生涯投資枠上限（元本1,800万円）
 
 # 画面設定と洗練されたカスタムCSS
 st.set_page_config(
@@ -152,10 +152,10 @@ with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
-# パターン３：死亡保険金を直接入力・設定
+# 死亡保険金を1,000万円に設定
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
-    husband_death_benefit = st.number_input("夫の死亡保険金額 (万円)", 0, 20000, 3000, step=100)
+    husband_death_benefit = st.number_input("夫の死亡保険金額 (万円)", 0, 20000, 1000, step=100)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
     st.info(f"💡 **死亡保険金受取額**: 夫死亡時（{husband_death_age}歳）に **{husband_death_benefit:,}万円** が世帯に入金される設定として反映されます。")
@@ -392,7 +392,7 @@ def run_simulation(real_return_rate):
         current_pension_gross = p_gross_h + p_gross_w
         current_pension_net = p_net_h + p_net_w
         
-        # 夫死亡時の保険金受け取り（パターン3：直接指定額にインフレ率を乗算）
+        # 夫死亡時の保険金受け取り（インフレ率乗算）
         current_death_benefit_val = husband_death_benefit if age_h == husband_death_age else 0
         inflated_death_benefit = current_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
@@ -477,12 +477,13 @@ def run_simulation(real_return_rate):
             excess = sim_cash - max_cash_limit
             sim_cash = max_cash_limit
             
+            # 元本累計1,800万円上限の判定
             nisa_room_lifetime = max(0.0, NISA_LIFETIME_LIMIT - nisa_cum_principal)
             nisa_allocable = min(excess, NISA_ANNUAL_LIMIT, nisa_room_lifetime)
 
             if nisa_allocable > 0:
                 sim_nisa += nisa_allocable
-                nisa_cum_principal += nisa_allocable
+                nisa_cum_principal += nisa_allocable  # 元本累計に加算
                 excess -= nisa_allocable
 
             if excess > 0:
@@ -699,7 +700,7 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("新NISAの考慮、精緻な手取り計算、夫のインフレ連動年収、および直接指定した死亡保険金を含むシミュレーション結果をAIに送信し、プロのファイナンシャルプランナー視点でアドバイスを受け取ります。")
+    st.write("新NISAの考慮、精緻な手取り計算、夫のインフレ連動年収、および死亡保険金を含むシミュレーション結果をAIに送信し、プロのファイナンシャルプランナー視点でアドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
