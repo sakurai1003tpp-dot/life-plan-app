@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import time
+import os
 import io
 
 # ------------------------------------------
@@ -152,7 +153,7 @@ with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
-# 死亡保険金を1,000万円に設定
+# 死亡保険金1,000万円設定
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
     husband_death_benefit = st.number_input("夫の死亡保険金額 (万円)", 0, 20000, 1000, step=100)
@@ -392,7 +393,6 @@ def run_simulation(real_return_rate):
         current_pension_gross = p_gross_h + p_gross_w
         current_pension_net = p_net_h + p_net_w
         
-        # 夫死亡時の保険金受け取り（インフレ率乗算）
         current_death_benefit_val = husband_death_benefit if age_h == husband_death_age else 0
         inflated_death_benefit = current_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
@@ -437,7 +437,6 @@ def run_simulation(real_return_rate):
         sim_cash += pure_annual_balance + extra_retirement_cash
         min_cash_reserve = pure_total_expense * (emergency_fund_months / 12)
 
-        # 定年時の住宅購入処理
         if age_h == retirement_age_h and not is_husband_dead:
             sim_cash += sim_stock
             sim_stock = 0
@@ -457,7 +456,6 @@ def run_simulation(real_return_rate):
 
             sim_cash -= (regional_house_cost * inflation_factor)
 
-        # キャッシュフロー調整（NISA優先積み立て ＆ 取崩し）
         if sim_cash < min_cash_reserve:
             shortfall = min_cash_reserve - sim_cash
             if sim_stock >= shortfall:
@@ -477,13 +475,12 @@ def run_simulation(real_return_rate):
             excess = sim_cash - max_cash_limit
             sim_cash = max_cash_limit
             
-            # 元本累計1,800万円上限の判定
             nisa_room_lifetime = max(0.0, NISA_LIFETIME_LIMIT - nisa_cum_principal)
             nisa_allocable = min(excess, NISA_ANNUAL_LIMIT, nisa_room_lifetime)
 
             if nisa_allocable > 0:
                 sim_nisa += nisa_allocable
-                nisa_cum_principal += nisa_allocable  # 元本累計に加算
+                nisa_cum_principal += nisa_allocable
                 excess -= nisa_allocable
 
             if excess > 0:
@@ -700,22 +697,29 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("新NISAの考慮、精緻な手取り計算、夫のインフレ連動年収、および死亡保険金を含むシミュレーション結果をAIに送信し、プロのファイナンシャルプランナー視点でアドバイスを受け取ります。")
+    st.write("現在のパラメータ、二人分保険料、夫の死亡保険金（1,000万円）、新NISA運用、およびシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
     
+    # APIキーの取得優先順位: 1. Streamlit Secrets, 2. 環境変数, 3. ハードコードキー
+    api_key_env = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ"))
+
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
-        with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
-            try:
-                client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
-                
-                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
-                summary_text = f"""
+        if not api_key_env:
+            st.warning("Gemini APIキーが設定されていません。")
+        else:
+            with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
+                try:
+                    # Google GenAI SDKクライアント構築
+                    client = genai.Client(api_key=api_key_env)
+                    
+                    medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
+                    summary_text = f"""
 【シミュレーション条件・パラメータ】
 - 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳、想定死亡: {husband_death_age}歳）
 - 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
 - 子供の人数: {child_count}人
-- 現在の資産: 現預金 {current_cash}万円 / 新NISA {current_nisa}万円 / 特定口座投信 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
+- 現在の資産: 現預金 {current_cash}万円 / 新NISA {current_nisa}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 / 夫の死亡保険金受取額: 約 {husband_death_benefit:,.0f}万円 ({husband_death_age}歳時に受取)
+- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 / 夫の死亡保険金受取額: {husband_death_benefit:,.0f}万円 ({husband_death_age}歳時に受取・収入グラフに反映)
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -725,34 +729,42 @@ with tab6:
 - 80歳時点の総資産: {wealth_at_80:,.0f}万円
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
-                prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。新NISAの非課税枠の活用、精緻な手取り計算（給与・年金）、インフレ連動、および保険料・死亡保障（{husband_death_benefit:,.0f}万円）を含めたライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+                    prompt = f"""
+あなたは優秀なファイナンシャルプランナー（FP）です。二人分の保険料負担に対する死亡保険金（{husband_death_benefit:,.0f}万円）の収入への反映や、医療費イベント、病気時の所得減額を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
 以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、資産形成効率の評価）
-2. **懸念されるリスクへの対策**（新NISA活用効率、医療イベント、老後の住宅購入費などについて）
+1. **全体の評価・総評**（この家計の強みと最大の懸念点、二人分の保険料に対する保障のバランス評価）
+2. **懸念されるリスクへの対策**（保険金受け取り後のキャッシュフロー、医療イベント、老後の住宅購入費、新NISA活用などについて）
 3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
 """
-                
-                response = None
-                max_retries = 4
-                for attempt in range(max_retries):
-                    try:
-                        response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                        )
-                        st.markdown(response.text)
-                        break
-                    except Exception as api_err:
-                        err_str = str(api_err)
-                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
-                            time.sleep(2)
-                            continue
-                        else:
-                            st.error(f"AI診断の実行中にエラーが発生しました: {api_err}")
+                    
+                    response = None
+                    max_retries = 3
+                    # 正しいGenAI標準モデル名を使用
+                    target_model = "gemini-2.5-flash"
+
+                    for attempt in range(max_retries):
+                        try:
+                            response = client.models.generate_content(
+                                model=target_model,
+                                contents=prompt,
+                            )
                             break
-            except Exception as e:
-                st.error(f"処理中にエラーが発生しました: {e}")
+                        except Exception as api_err:
+                            err_str = str(api_err)
+                            if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
+                                time.sleep(2 ** attempt)
+                                continue
+                            else:
+                                raise api_err
+                    
+                    if response and hasattr(response, "text") and response.text:
+                        st.markdown(response.text)
+                    else:
+                        st.warning("AIからの応答を取得できませんでした。再度お試しいただくか、APIキーをご確認ください。")
+
+                except Exception as e:
+                    st.error(f"AI診断実行中にエラーが発生しました: {e}")
+                    st.info("※APIキーが無効になっているか、クォータを超過している可能性があります。")
