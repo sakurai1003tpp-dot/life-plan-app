@@ -35,7 +35,7 @@ COLOR_ACCENT = "#FFD93D"
 COLOR_GREEN = "#6BCB77"
 COLOR_PURPLE = "#9D4EDD"
 COLOR_DARK = "#2B2D42"
-COLOR_NISA = "#20B2AA"  # 新NISA用のカラー（ライトシーグリーン）
+COLOR_NISA = "#20B2AA"  # 新NISA用カラー
 
 # 税率・制度定数
 TAX_RATE_TAXABLE = 0.20315  # 特定口座等の課税率
@@ -152,11 +152,13 @@ with st.sidebar.expander("🏥 医療・民間保険設定", expanded=False):
     medical_event_age = st.slider("病気を想定する夫の年齢", 40, 90, 55)
     medical_event_cost = st.number_input("医療・入院時の自己負担臨時費用（万円）", 0, 500, 100, step=10)
 
+# パターン３：死亡保険金を直接入力・設定
 with st.sidebar.expander("⚰️ 万が一の備え（配偶者死亡時）", expanded=False):
     husband_death_age = st.slider("夫の想定死亡年齢", 60, 100, 85)
+    husband_death_benefit = st.number_input("夫の死亡保険金額 (万円)", 0, 20000, 3000, step=100)
     death_lump_sum_cost = st.number_input("介護・葬儀等の一次費用 (万円)", 0, 1000, 300, step=10)
     survivor_pension_ratio = st.slider("遺族年金移行時の夫年金の受給割合 (%)", 0, 100, 75) / 100.0
-    st.info(f"💡 **死亡保険金受取額**: 二人分の月額保険料（{monthly_insurance_active}万円）のうち夫の保障割合等を考慮し、算出される保険金の半分（約 **{int(monthly_insurance_active * 12 * 800 * 0.5 / 10000):,}万円** 相当）が受給される設計として反映されます。")
+    st.info(f"💡 **死亡保険金受取額**: 夫死亡時（{husband_death_age}歳）に **{husband_death_benefit:,}万円** が世帯に入金される設定として反映されます。")
 
 with st.sidebar.expander("🏠 支出・インフレ・年金連動設定", expanded=False):
     expense_change_rate = st.slider("インフレ率（生活費の上昇率 %）", 0.0, 5.0, 1.4, step=0.1)
@@ -203,10 +205,10 @@ if child_count > 0:
 maternity_leave_years_w = sorted(list(set([b_w + y for b_w in birth_ages_w for y in range(maternity_leave_per_child)])))
 reduced_income_years_w = sorted(list(set([b_w + maternity_leave_per_child + y for b_w in birth_ages_w for y in range(child_care_reduction_years)])))
 
-# 1. 給与所得の手取り額計算（超過累進税率・社保上限）
+# 1. 給与所得の手取り額計算
 def calculate_salary_net_income(gross_man: float) -> float:
     if gross_man <= 0: return 0.0
-    gross = gross_man * 10000.0  # 円換算
+    gross = gross_man * 10000.0
 
     if gross <= 1625000: kyuyo_koshu = 550000
     elif gross <= 1800000: kyuyo_koshu = gross * 0.40 - 100000
@@ -216,7 +218,7 @@ def calculate_salary_net_income(gross_man: float) -> float:
     else: kyuyo_koshu = 1950000
 
     employment_income = max(0.0, gross - kyuyo_koshu)
-    shakai_hoken = min(gross * 0.15, 1800000.0)  # 社保上限設定
+    shakai_hoken = min(gross * 0.15, 1800000.0)
     basic_deduction = 480000.0
     taxable_income = max(0.0, employment_income - shakai_hoken - basic_deduction)
 
@@ -234,7 +236,7 @@ def calculate_salary_net_income(gross_man: float) -> float:
     net_income = gross - shakai_hoken - income_tax - resident_tax
     return max(0.0, net_income / 10000.0)
 
-# 2. 公的年金等の手取り額計算（年金専用控除・国保介護料）
+# 2. 公的年金等の手取り額計算
 def calculate_pension_net_income(gross_pension_man: float, age: int) -> float:
     if gross_pension_man <= 0: return 0.0
     gross = gross_pension_man * 10000.0
@@ -263,7 +265,7 @@ def calculate_pension_net_income(gross_pension_man: float, age: int) -> float:
     net_pension = gross - social_insurance - income_tax - resident_tax
     return max(0.0, net_pension / 10000.0)
 
-# 3. 夫の基本額面年収カーブ
+# 3. 夫の年収計算（インフレ連動）
 def calculate_husband_base_gross_income(age):
     if age < 29 or age >= retirement_age_h: return 0
     elif age <= 41:
@@ -272,7 +274,6 @@ def calculate_husband_base_gross_income(age):
     else:
         return 1100.0 + (age - 42) * ((1500.0 - 1100.0) / max(1, retirement_age_h - 1 - 42))
 
-# 夫の額面年収（インフレ・ベースアップ連動適用）
 def calculate_husband_gross_income(age, year_idx, exp_change_rate):
     base = calculate_husband_base_gross_income(age)
     if base <= 0: return 0
@@ -281,7 +282,6 @@ def calculate_husband_gross_income(age, year_idx, exp_change_rate):
     else:
         base_val = base
     
-    # インフレ率（ベースアップ）を掛け合わせて連動
     inflation_factor = (1 + exp_change_rate / 100) ** year_idx
     return base_val * inflation_factor
 
@@ -315,9 +315,6 @@ def get_child_living_expense_addition(c_age, course_type=None):
 def calculate_cancer_benefit(monthly_premium):
     return int((monthly_premium * 12) * 15)
 
-def calculate_dynamic_death_benefit(monthly_premium):
-    return (monthly_premium * 800.0) * 0.5
-
 # ------------------------------------------
 # シミュレーション実行関数
 # ------------------------------------------
@@ -328,10 +325,10 @@ def run_simulation(real_return_rate):
     
     sim_cash = current_cash
     sim_nisa = current_nisa
-    sim_investment = current_investment  # 特定口座投資信託
-    sim_stock = current_stock            # 個別株式
+    sim_investment = current_investment
+    sim_stock = current_stock
     sim_ideco = current_ideco
-    nisa_cum_principal = current_nisa     # NISA生涯枠管理（初期値を計上）
+    nisa_cum_principal = current_nisa
     
     asset_depletion_age = None
     effective_pension_rate = (expense_change_rate * pension_indexation_rate) / 100.0
@@ -348,16 +345,11 @@ def run_simulation(real_return_rate):
         if age_h < 60 and not is_husband_dead:
             annual_ideco_contribution = ideco_monthly_contribution * 12
 
-        # 運用益計算
         if i > 0:
-            # 新NISA：非課税（×1.0）
             sim_nisa *= (1 + current_nominal_return_rate / 100)
-            # 特定口座投資信託：運用益（20.315%課税後）
             growth_taxable = sim_investment * (current_nominal_return_rate / 100) * (1.0 - TAX_RATE_TAXABLE)
             sim_investment += growth_taxable
-            # 株式
             sim_stock *= (1 + stock_return_rate / 100)
-            # 企業型DC
             sim_ideco *= (1 + current_nominal_return_rate / 100)
         
         sim_ideco += annual_ideco_contribution
@@ -367,14 +359,11 @@ def run_simulation(real_return_rate):
             sim_cash += sim_ideco
             sim_ideco = 0
 
-        # 株式配当（特定口座：課税後）
         annual_dividend = (sim_stock * (stock_dividend_yield / 100)) * (1.0 - TAX_RATE_TAXABLE) if sim_stock > 0 else 0
 
-        # 夫の収入（インフレ連動 ＆ 超過累進手取り計算）
         gross_h = 0 if is_husband_dead else calculate_husband_gross_income(age_h, i, expense_change_rate)
         net_h = calculate_salary_net_income(gross_h) if age_h < retirement_age_h else 0
         
-        # 妻の収入
         gross_w = 0
         if age_w < retirement_age_w:
             if age_w not in maternity_leave_years_w:
@@ -393,7 +382,6 @@ def run_simulation(real_return_rate):
         extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
                                 (retirement_payout_h if (age_h == retirement_age_h and not is_husband_dead) else 0)
         
-        # 年金計算（精緻化した公的年金手取り関数を適用）
         p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
         p_gross_w = calculated_pension_w * ((1 + effective_pension_rate) ** i) if age_w >= pension_start_age_w else 0
@@ -404,8 +392,9 @@ def run_simulation(real_return_rate):
         current_pension_gross = p_gross_h + p_gross_w
         current_pension_net = p_net_h + p_net_w
         
-        current_dynamic_death_benefit_val = calculate_dynamic_death_benefit(monthly_insurance_active) if age_h == husband_death_age else 0
-        inflated_death_benefit = current_dynamic_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
+        # 夫死亡時の保険金受け取り（パターン3：直接指定額にインフレ率を乗算）
+        current_death_benefit_val = husband_death_benefit if age_h == husband_death_age else 0
+        inflated_death_benefit = current_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
         pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit
         total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit
@@ -454,7 +443,6 @@ def run_simulation(real_return_rate):
             sim_stock = 0
             needed = (regional_house_cost * inflation_factor) - sim_cash
             if needed > 0:
-                # 特定口座 → NISA口座の順で解約充当
                 gross_sale = min(needed / 0.8, sim_investment)
                 tax_amount = (gross_sale * 0.5) * TAX_RATE_TAXABLE
                 net_sale = gross_sale - tax_amount
@@ -471,7 +459,6 @@ def run_simulation(real_return_rate):
 
         # キャッシュフロー調整（NISA優先積み立て ＆ 取崩し）
         if sim_cash < min_cash_reserve:
-            # 不足時：特定口座/株式 → NISAの順で崩す
             shortfall = min_cash_reserve - sim_cash
             if sim_stock >= shortfall:
                 sim_stock -= shortfall; sim_cash += shortfall
@@ -487,11 +474,9 @@ def run_simulation(real_return_rate):
                         sim_cash += sim_nisa; sim_nisa = 0
 
         elif age_h < investment_stop_age_h and sim_cash > max_cash_limit:
-            # 余剰資産の積立（NISA優先）
             excess = sim_cash - max_cash_limit
             sim_cash = max_cash_limit
             
-            # NISA年間・生涯枠の計算
             nisa_room_lifetime = max(0.0, NISA_LIFETIME_LIMIT - nisa_cum_principal)
             nisa_allocable = min(excess, NISA_ANNUAL_LIMIT, nisa_room_lifetime)
 
@@ -500,7 +485,6 @@ def run_simulation(real_return_rate):
                 nisa_cum_principal += nisa_allocable
                 excess -= nisa_allocable
 
-            # NISA枠から溢れた分は特定口座へ
             if excess > 0:
                 sim_investment += excess
 
@@ -715,14 +699,13 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("新NISAの考慮、精緻な手取り計算、および夫のインフレ連動年収を含むシミュレーション結果をAIに送信し、プロのファイナンシャルプランナー視点でアドバイスを受け取ります。")
+    st.write("新NISAの考慮、精緻な手取り計算、夫のインフレ連動年収、および直接指定した死亡保険金を含むシミュレーション結果をAIに送信し、プロのファイナンシャルプランナー視点でアドバイスを受け取ります。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
         with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
-                auto_death_ben = calculate_dynamic_death_benefit(monthly_insurance_active)
                 medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
                 summary_text = f"""
 【シミュレーション条件・パラメータ】
@@ -731,7 +714,7 @@ with tab6:
 - 子供の人数: {child_count}人
 - 現在の資産: 現預金 {current_cash}万円 / 新NISA {current_nisa}万円 / 特定口座投信 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
 - 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 → 死亡保険金は約 {auto_death_ben:,.0f}万円 ({husband_death_age}歳時に受取)
+- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 / 夫の死亡保険金受取額: 約 {husband_death_benefit:,.0f}万円 ({husband_death_age}歳時に受取)
 - 医療イベント想定: {medical_info_str}
 - 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
 - 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
@@ -742,7 +725,7 @@ with tab6:
 - 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
 """
                 prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。新NISAの非課税枠の活用、精緻な手取り計算（給与・年金）、インフレ連動、および保険料・保障を含めたライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
+あなたは優秀なファイナンシャルプランナー（FP）です。新NISAの非課税枠の活用、精緻な手取り計算（給与・年金）、インフレ連動、および保険料・死亡保障（{husband_death_benefit:,.0f}万円）を含めたライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
 {summary_text}
 
