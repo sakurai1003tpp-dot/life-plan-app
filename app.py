@@ -204,7 +204,6 @@ if child_count > 0:
 maternity_leave_years_w = sorted(list(set([b_w + y for b_w in birth_ages_w for y in range(maternity_leave_per_child)])))
 reduced_income_years_w = sorted(list(set([b_w + maternity_leave_per_child + y for b_w in birth_ages_w for y in range(child_care_reduction_years)])))
 
-# 動的な死亡保険金計算
 def calculate_dynamic_death_benefit(monthly_premium):
     return husband_death_benefit
 
@@ -741,13 +740,13 @@ with tab6:
                 for attempt in range(max_retries):
                     try:
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.6-flash',
                             contents=prompt,
                         )
                         break
                     except Exception as api_err:
                         err_str = str(api_err)
-                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower() or "404" in err_str or "NOT_FOUND" in err_str) and attempt < max_retries - 1:
+                        if ("503" in err_str or "UNAVAILABLE" in err_str or "overloaded" in err_str.lower()) and attempt < max_retries - 1:
                             time.sleep(2 ** attempt)
                             continue
                         else:
