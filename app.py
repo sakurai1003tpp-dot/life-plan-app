@@ -267,7 +267,32 @@ def calculate_pension_net_income(gross_pension_man: float, age: int) -> float:
     net_pension = gross - social_insurance - income_tax - resident_tax
     return max(0.0, net_pension / 10000.0)
 
-# 3. 夫の年収計算（インフレ連動）
+# 3. 退職金・DC一時金等の手取り額計算（退職所得控除適用）
+def calculate_retirement_net_income(gross_man: float, service_years: int = 30) -> float:
+    if gross_man <= 0: return 0.0
+    gross = gross_man * 10000.0
+
+    if service_years <= 20:
+        deduction = 400000.0 * service_years
+    else:
+        deduction = 8000000.0 + 700000.0 * (service_years - 20)
+    
+    taxable_income = max(0.0, (gross - deduction) * 0.5)
+    if taxable_income == 0:
+        return gross_man
+    
+    if taxable_income <= 1950000: income_tax = taxable_income * 0.05
+    elif taxable_income <= 3300000: income_tax = taxable_income * 0.10 - 97500
+    elif taxable_income <= 6950000: income_tax = taxable_income * 0.20 - 427500
+    elif taxable_income <= 9000000: income_tax = taxable_income * 0.23 - 636000
+    else: income_tax = taxable_income * 0.33 - 1536000
+
+    income_tax *= 1.021
+    resident_tax = taxable_income * 0.10
+    net_income = gross - income_tax - resident_tax
+    return max(0.0, net_income / 10000.0)
+
+# 4. 夫の年収計算（インフレ連動）
 def calculate_husband_base_gross_income(age):
     if age < 29 or age >= retirement_age_h: return 0
     elif age <= 41:
@@ -357,9 +382,12 @@ def run_simulation(real_return_rate):
         sim_ideco += annual_ideco_contribution
         sim_cash -= annual_ideco_contribution
 
+        # 企業型DC受給処理（受給額を収入として合算）
+        dc_gross = 0.0
         if age_h == ideco_receive_age and sim_ideco > 0:
-            sim_cash += sim_ideco
+            dc_gross = sim_ideco
             sim_ideco = 0
+        dc_net = calculate_retirement_net_income(dc_gross, service_years=30)
 
         annual_dividend = (sim_stock * (stock_dividend_yield / 100)) * (1.0 - TAX_RATE_TAXABLE) if sim_stock > 0 else 0
 
@@ -381,9 +409,11 @@ def run_simulation(real_return_rate):
             gross_w *= 0.8
             net_w *= 0.8
 
-        extra_retirement_cash = (retirement_payout_w if age_w == retirement_age_w else 0) + \
-                                (retirement_payout_h if (age_h == retirement_age_h and not is_husband_dead) else 0)
-        
+        # 退職金受給処理
+        ret_gross = (retirement_payout_w if age_w == retirement_age_w else 0) + \
+                    (retirement_payout_h if (age_h == retirement_age_h and not is_husband_dead) else 0)
+        ret_net = calculate_retirement_net_income(ret_gross, service_years=35)
+
         p_gross_h = calculated_pension_h * ((1 + effective_pension_rate) ** i) if age_h >= pension_start_age_h else 0
         if is_husband_dead: p_gross_h *= survivor_pension_ratio
         p_gross_w = calculated_pension_w * ((1 + effective_pension_rate) ** i) if age_w >= pension_start_age_w else 0
@@ -397,8 +427,9 @@ def run_simulation(real_return_rate):
         current_death_benefit_val = husband_death_benefit if age_h == husband_death_age else 0
         inflated_death_benefit = current_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
-        pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit
-        total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit
+        # DC一時金や退職金も収入に含める
+        pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit + dc_net + ret_net
+        total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit + dc_gross + ret_gross
 
         annual_car_cost_inflated = (car_maintenance_cost + (car_purchase_price / car_replacement_cycle)) * inflation_factor
         current_private_insurance_cost = ((monthly_insurance_active * 12) if age_h < retirement_age_h else annual_insurance_retired) * inflation_factor
@@ -422,7 +453,6 @@ def run_simulation(real_return_rate):
 
         if age_h == husband_death_age:
             extra_one_time += death_lump_sum_cost * inflation_factor
-            sim_cash += inflated_death_benefit 
 
         if is_sick_year:
             extra_one_time += medical_event_cost * inflation_factor
@@ -435,7 +465,7 @@ def run_simulation(real_return_rate):
         pure_total_expense = annual_expense + sum(c_exp) + extra_one_time
         pure_annual_balance = pure_annual_income - pure_total_expense
 
-        sim_cash += pure_annual_balance + extra_retirement_cash
+        sim_cash += pure_annual_balance
         min_cash_reserve = pure_total_expense * (emergency_fund_months / 12)
 
         if age_h == retirement_age_h and not is_husband_dead:
@@ -583,7 +613,7 @@ with tab1:
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
-    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入（精緻化後・保険金込み）", color=COLOR_SECONDARY, linewidth=2.2)
+    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入（精緻化後・退職金/DC一時金/保険金込み）", color=COLOR_SECONDARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["expense"], label="総支出", color=COLOR_PRIMARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["balance"], label="年間収支", color=COLOR_DARK, linewidth=1.8, linestyle="-.")
     ax2.fill_between(base_res["age"], base_res["balance"], 0, where=[b >= 0 for b in base_res["balance"]], color=COLOR_GREEN, alpha=0.2)
@@ -629,10 +659,10 @@ with tab2:
     fig2, ax_n = plt.subplots(figsize=(10 * chart_scale, 6 * chart_scale))
     fig2.patch.set_facecolor("#F8F9FA")
     ax_n.set_facecolor("#FFFFFF")
-    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入（インフレ連動）", color=COLOR_PRIMARY, linewidth=2.5)
+    ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入（退職金・DC一時金・保険金込み）", color=COLOR_PRIMARY, linewidth=2.5)
     ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入（精緻計算）", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
-    ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り", color=COLOR_SECONDARY, linestyle=":")
-    ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り", color=COLOR_ACCENT, linestyle=":")
+    ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り給与", color=COLOR_SECONDARY, linestyle=":")
+    ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り給与", color=COLOR_ACCENT, linestyle=":")
     ax_n.plot(base_res["age"], base_res["p_net"], label="年金手取り", color=COLOR_PURPLE, linestyle="-.")
     ax_n.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax_n.set_title("収入（額面・精緻手取り）の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
@@ -698,43 +728,72 @@ with tab5:
 
 with tab6:
     st.markdown("### 🤖 Gemini AIによる家計診断")
-    st.write("現在のパラメータおよびシミュレーション結果をAIに送信し、プロのファイナンシャルプランナーの視点から改善アドバイスを受け取ります。")
+    st.write("現在のシミュレーション設定・資産推移・リスクイベント（医療・万が一の保障・定年時住宅購入）に基づき、プロのファイナンシャルプランナー（FP）の視点から総合的な家計診断を行います。")
     
     if st.button("🚀 AIに家計診断を依頼する", type="primary", use_container_width=True):
-        with st.spinner("Geminiが家計の診断とアドバイスを生成中..."):
+        with st.spinner("Geminiが家計シミュレーションデータを詳細分析中..."):
             try:
                 client = genai.Client(api_key="AQ.Ab8RN6K-KKtdj7nYhxG2JU8LaGNvHuu2_1UkoxVNHXDfQ8F6QQ")
                 
                 auto_death_ben = calculate_dynamic_death_benefit(monthly_insurance_active)
-                medical_info_str = f"あり（{medical_event_age}歳時に臨時費用 {medical_event_cost}万円＋給付金受給、年収・手取り0.8倍減額）" if enable_medical_event else "なし"
+                medical_info_str = f"あり（夫{medical_event_age}歳時に自己負担 {medical_event_cost}万円＋給付金、夫婦ともにその年の年収2割減）" if enable_medical_event else "なし"
+                
+                child_courses_str = ", ".join([f"第{k}子: {course_labels.get(v, v)}" for k, v in child_courses.items()]) if child_count > 0 else "なし"
+
                 summary_text = f"""
-【シミュレーション条件・パラメータ】
-- 夫の年齢: {current_age_h}歳（退職: {retirement_age_h}歳、想定死亡: {husband_death_age}歳）
-- 妻の年齢: {current_age_w}歳（退職: {retirement_age_w}歳）
-- 子供の人数: {child_count}人
-- 現在の資産: 現預金 {current_cash}万円 / 投資信託 {current_investment}万円 / 株式 {current_stock}万円 / 企業型DC {current_ideco}万円 (合計: {initial_wealth}万円)
-- 企業型DC積立: 毎月 {ideco_monthly_contribution}万円（受給開始: {ideco_receive_age}歳）
-- 民間保険料（現役期二人分）: 毎月 {monthly_insurance_active}万円 → 死亡保険金は約 {auto_death_ben:,.0f}万円 ({husband_death_age}歳時に受取・収入グラフに反映)
-- 医療イベント想定: {medical_info_str}
-- 毎月の基本生活費: {living_expenses_monthly}万円 / 住居費: {housing_expenses_monthly}万円
-- 想定実質利回り: {base_real_return_rate}% / インフレ率: {expense_change_rate}%
+【家族構成・働き方】
+- 夫：現在 {current_age_h}歳（退職予定: {retirement_age_h}歳、想定死亡: {husband_death_age}歳）
+- 妻：現在 {current_age_w}歳（現在年収: {gross_income_w}万円、退職予定: {retirement_age_w}歳）
+- 子ども：{child_count}人（第1子誕生時夫年齢: {first_birth_age_h}歳、進路: {child_courses_str}）
+
+【資産・運用・年金・退職金】
+- 初期資産：現預金 {current_cash}万円 / 新NISA {current_nisa}万円 / 特定口座投信 {current_investment}万円 / 個別株 {current_stock}万円 / 企業型DC {current_ideco}万円（合計: {initial_wealth}万円）
+- 企業型DC：毎月掛金 {ideco_monthly_contribution}万円（受給開始想定: {ideco_receive_age}歳）
+- 退職金見込み：夫 {retirement_payout_h}万円 / 妻 {retirement_payout_w}万円
+- 65歳時点の年金見込額（額面）：夫 {pension_at_65_h}万円/年（受給開始: {pension_start_age_h}歳）、妻 {pension_at_65_w}万円/年（受給開始: {pension_start_age_w}歳）
+- 運用前提：実質利回り {base_real_return_rate}% / インフレ率 {expense_change_rate}%
+
+【支出・保険・リスク設定】
+- 毎月の基本生活費：{living_expenses_monthly}万円 / 住居費：{housing_expenses_monthly}万円
+- 民間保険料（現役期）：毎月 {monthly_insurance_active}万円（夫死亡保険金額: {husband_death_benefit}万円）
+- 医療イベント想定：{medical_info_str}
+- 老後・定年時イベント：定年時住宅購入費 {regional_house_cost}万円、老後公的医療保険料等 {annual_retirement_insurance_cost}万円/年
 
 【シミュレーション結果サマリー】
-- 資産ピーク時: {peak_wealth:,.0f}万円
-- 80歳時点の総資産: {wealth_at_80:,.0f}万円
-- 資産破綻（マイナス）の有無・年齢: {f"{base_res['depletion_age']}歳で破綻" if base_res['depletion_age'] is not None else "100歳まで破綻なし"}
+- 資産ピーク時：{peak_wealth:,.0f}万円（{base_res["age"][base_res["wealth"].index(peak_wealth)]}歳時点）
+- 80歳時点の総資産：{wealth_at_80:,.0f}万円
+- 最終（100歳時点）の総資産：{base_res["wealth"][-1]:,.0f}万円
+- 資産破綻（マイナス）の有無：{f"{base_res['depletion_age']}歳で破綻見込み" if base_res['depletion_age'] is not None else "100歳まで破綻なし（健全）"}
 """
-                prompt = f"""
-あなたは優秀なファイナンシャルプランナー（FP）です。二人の収入や、出産・育児、病気時の所得減額を含むライフプランシミュレーション結果を分析し、ユーザーに対して親身かつ具体的で実用的なアドバイス・家計診断を行ってください。
 
+                prompt = f"""
+あなたは顧客目線に立った経験豊富な上級ファイナンシャルプランナー（CFP）です。
+提示されたライフプランシミュレーション結果を多角的に診断し、具体的で実行可能性の高いアドバイスを提供してください。
+
+【診断対象のデータ】
 {summary_text}
 
-以下の構成で回答を出力してください：
-1. **全体の評価・総評**（この家計の強みと最大の懸念点、二人分の保険料に対する保障のバランス評価）
-2. **懸念されるリスクへの対策**（保険金受け取り後のキャッシュフロー、医療イベント、老後の住宅購入費などについて）
-3. **具体的なアクションプラン**（今日から実行できる改善提案を2〜3個）
+【出力フォーマット・記述指示】
+以下の3つの構成で、分かりやすく丁寧な日本語（トーン：プロフェッショナルかつ親身）で回答してください。
+
+### 1. 総合評価と家計の強み・課題
+- 100歳までの資産推移（破綻リスクの有無、資産ピーク、老後資金）に対する総評
+- 入力データ（収入、積立・運用、保障、退職金、住宅購入計画）から見える**「この家計の強い点」**と**「ボトルネック（懸念点）」**
+- 現役期の民間保険料（月{monthly_insurance_active}万円）と保障額（死亡保険金{husband_death_benefit}万円、医療イベントへの備え）のコストパフォーマンス評価
+
+### 2. 主要リスクへの具体的アドバイス
+- **老後資金・住宅購入リスク**: 定年時の住宅購入（{regional_house_cost}万円）や企業型DC・退職金受け取り（税制・手取り効果）の注意点と提案
+- **教育費・生活費リスク**: インフレ（{expense_change_rate}%）や子どもの進路費用への対応力評価
+- **万が一・病気リスク**: 医療費イベント発生時や配偶者死亡時のキャッシュフローの耐久性
+
+### 3. 今すぐ取り組むべきアクションプラン（3つのステップ）
+1. **【短期：今すぐ〜1年以内】**（保険の見直し、キャッシュフロー最適化、緊急資金の確保など）
+2. **【中期：子育て・住宅期】**（新NISA枠の最大活用、教育資金の準備、住宅資金計画など）
+3. **【長期：退職・老後準備】**（企業型DC・年金の繰り下げ/繰り上げ、老後の資産引き出し戦略など）
+
+※数値を引用しながら、根拠が明確で説得力のあるアドバイスを提示してください。
 """
-                
+
                 response = None
                 max_retries = 4
                 for attempt in range(max_retries):
