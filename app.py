@@ -135,8 +135,8 @@ with st.sidebar.expander("👶 子ども・育休設定", expanded=False):
 
 with st.sidebar.expander("📈 資産・新NISA・DC・運用設定", expanded=False):
     current_cash = st.number_input("現在の現預金 (万円)", 0, 50000, 1000, step=50)
-    current_nisa = st.number_input("現在の新NISA資産 (万円)", 0, 50000, 500, step=50)
-    current_investment = st.number_input("現在の特定口座投資信託 (万円)", 0, 50000, 800, step=50)
+    current_nisa = st.number_input("現在の新NISA資産 (万円)", 0, 50000, 1300, step=50)
+    current_investment = st.number_input("現在の特定口座投資信託 (万円)", 0, 50000, 0, step=50)
     current_stock = st.number_input("現在の個別株式 (万円)", 0, 50000, 130, step=10)
     current_ideco = st.number_input("現在の企業型DC資産残高 (万円)", 0, 20000, 78, step=1)
     ideco_monthly_contribution = st.number_input("企業型DC 毎月の掛金 (万円/月)", 0.0, 7.0, 1.0, step=0.5)
