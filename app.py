@@ -395,12 +395,19 @@ def run_simulation(real_return_rate):
         net_h = calculate_salary_net_income(gross_h) if age_h < retirement_age_h else 0
         
         gross_w = 0
+        net_w = 0.0
         if age_w < retirement_age_w:
-            if age_w not in maternity_leave_years_w:
-                base_w = gross_income_w * ((1 + income_change_rate_w / 100) ** i)
-                if age_w in reduced_income_years_w: base_w *= (1 - 0.30)
+            base_w = gross_income_w * ((1 + income_change_rate_w / 100) ** i)
+            if age_w in maternity_leave_years_w:
+                # 産休・育休期間中：額面は0だが、通常勤務時の手取りの75%（育児休業給付金等・非課税）を支給
+                gross_w = 0.0
+                normal_net_w = calculate_salary_net_income(base_w)
+                net_w = normal_net_w * 0.75
+            else:
+                if age_w in reduced_income_years_w:
+                    base_w *= (1 - 0.30)  # 時短勤務は3割減額
                 gross_w = base_w
-        net_w = calculate_salary_net_income(gross_w)
+                net_w = calculate_salary_net_income(gross_w)
 
         is_sick_year = (enable_medical_event and age_h == medical_event_age and not is_husband_dead)
         if is_sick_year:
@@ -427,7 +434,7 @@ def run_simulation(real_return_rate):
         current_death_benefit_val = husband_death_benefit if age_h == husband_death_age else 0
         inflated_death_benefit = current_death_benefit_val * inflation_factor if age_h == husband_death_age else 0
 
-        # DC一時金や退職金も収入に含める
+        # DC一時金や退職金、育休給付金も手取り収入に含める
         pure_annual_income = net_h + net_w + current_pension_net + annual_dividend + inflated_death_benefit + dc_net + ret_net
         total_gross_income = gross_h + gross_w + current_pension_gross + annual_dividend + inflated_death_benefit + dc_gross + ret_gross
 
@@ -613,7 +620,7 @@ with tab1:
     ax1.legend(loc="upper left", frameon=True, facecolor="#FFFFFF", edgecolor="none")
     ax1.grid(True, linestyle=":", alpha=0.6)
     
-    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入（精緻化後・退職金/DC一時金/保険金込み）", color=COLOR_SECONDARY, linewidth=2.2)
+    ax2.plot(base_res["age"], base_res["hh_net"], label="手取り収入（精緻化後・育休給付金/退職金/DC/保険金込み）", color=COLOR_SECONDARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["expense"], label="総支出", color=COLOR_PRIMARY, linewidth=2.2)
     ax2.plot(base_res["age"], base_res["balance"], label="年間収支", color=COLOR_DARK, linewidth=1.8, linestyle="-.")
     ax2.fill_between(base_res["age"], base_res["balance"], 0, where=[b >= 0 for b in base_res["balance"]], color=COLOR_GREEN, alpha=0.2)
@@ -660,9 +667,9 @@ with tab2:
     fig2.patch.set_facecolor("#F8F9FA")
     ax_n.set_facecolor("#FFFFFF")
     ax_n.plot(base_res["age"], base_res["hh_gross"], label="世帯額面収入（退職金・DC一時金・保険金込み）", color=COLOR_PRIMARY, linewidth=2.5)
-    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入（精緻計算）", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
+    ax_n.plot(base_res["age"], base_res["hh_net"], label="世帯手取り収入（精緻計算・育休給付金含む）", color=COLOR_GREEN, linewidth=2.5, linestyle="--")
     ax_n.plot(base_res["age"], base_res["h_net"], label="夫手取り給与", color=COLOR_SECONDARY, linestyle=":")
-    ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り給与", color=COLOR_ACCENT, linestyle=":")
+    ax_n.plot(base_res["age"], base_res["w_net"], label="妻手取り（給与＋育休給付金）", color=COLOR_ACCENT, linestyle=":")
     ax_n.plot(base_res["age"], base_res["p_net"], label="年金手取り", color=COLOR_PURPLE, linestyle="-.")
     ax_n.axvline(husband_death_age, color="#2B2D42", linestyle=":", label="夫の想定死亡")
     ax_n.set_title("収入（額面・精緻手取り）の推移", fontsize=13, fontweight="bold", color=COLOR_DARK)
@@ -745,6 +752,7 @@ with tab6:
 - 夫：現在 {current_age_h}歳（退職予定: {retirement_age_h}歳、想定死亡: {husband_death_age}歳）
 - 妻：現在 {current_age_w}歳（現在年収: {gross_income_w}万円、退職予定: {retirement_age_w}歳）
 - 子ども：{child_count}人（第1子誕生時夫年齢: {first_birth_age_h}歳、進路: {child_courses_str}）
+- 産休・育休想定：子1人あたり{maternity_leave_per_child}年間（育休期間中の手取り収入は通常時の約75%を給付金等として手取りに補填加算）
 
 【資産・運用・年金・退職金】
 - 初期資産：現預金 {current_cash}万円 / 新NISA {current_nisa}万円 / 特定口座投信 {current_investment}万円 / 個別株 {current_stock}万円 / 企業型DC {current_ideco}万円（合計: {initial_wealth}万円）
